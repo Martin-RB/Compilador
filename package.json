@@ -2,8 +2,9 @@
   "name": "ts_prueba1",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "PROY_FINAL.js",
   "scripts": {
+    "start" : "node .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -15,6 +16,6 @@
     "typed-lexer": "^1.0.2"
   },
   "devDependencies": {
-    "@types/node": "^13.7.7"
+    "@types/node": "^13.11.1"
   }
 }
