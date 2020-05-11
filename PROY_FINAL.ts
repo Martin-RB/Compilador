@@ -21,6 +21,7 @@ export namespace PROY_FINAL{
 
 		pileVals = new Stack<string>();
 		pileOps = new Stack<string>();
+		pileJump = new Stack<string>();
 		// [["type", [["var1", "dimention"], [var2, dimention]], [type, []]]
 		addFromString = (array: Array<{t:string, vs: Array<{n:string, d:string}>}>, state: string) => {
 			array.forEach(t => {
@@ -31,6 +32,32 @@ export namespace PROY_FINAL{
 					this.addVariableToTable(v.n, type, state, v.d);
 				});
 			});
+		}
+		pushCorchState = () => {
+			this.pileOps.push(";C;");
+			this.pileVals.push(";C;");
+		}
+		popCorchState = () => {
+			let ops = this.pileOps.peek() != ";C;";
+			let vals = this.pileVals.peek() != ";C;";
+			if(ops || vals){
+				throw new Error("CORCH ENDED UNEXPECTEDLY")
+			}
+			this.pileOps.pop();
+			this.pileVals.pop();
+		}
+		pushParthState = () => {
+			this.pileOps.push(";P;");
+			this.pileVals.push(";P;");
+		}
+		popParthState = () => {
+			let ops = this.pileOps.peek() != ";P;";
+			let vals = this.pileVals.peek() != ";P;";
+			if(ops || vals){
+				throw new Error("PARENTHESIS ENDED UNEXPECTEDLY")
+			}
+			this.pileOps.pop();
+			this.pileVals.pop();
 		}
 		addVariableToTable = (name: string, type: string, scope: string, dimSize: string) => {
 			if(!dimSize) dimSize = "1";
@@ -44,49 +71,118 @@ export namespace PROY_FINAL{
 				this.varTable.set(name, new Tuple<string, string, string, string, any | HashMap<any> | undefined>(name, type, scope, dimSize, undefined));
 			}
 		}
-		checkOperation = (opType: string) => {
-			let op = this.pileOps.peek();
-			if(opType == "1"){
-				if(op == "*" || op == "/"){
-					let operator = op;
-					let rightOnd = this.pileVals.pop();
-					let leftOnd = this.pileVals.pop();
+/* 		getLastValue = () => {
+			return this.pileVals.pop();
+		} */
 
-					let memSpace = Mem.request();
-					
+		checkOperation = (opType: string) => {
+			console.log("*********" + opType);
+			this.pileOps.print();
+			let op = this.pileOps.peek();
+			if(opType == "0"){
+				while(op == "="){
+					this.addQuaddProc(op, true);
+					op = this.pileOps.peek();
+				}
+			}
+			else if(opType == "1"){
+				if(op == "*" || op == "/"){
+					this.addQuaddProc(op);
 				}
 			}
 			else if(opType == "2"){
-
+				if(op == "-" || op == "+"){
+					this.addQuaddProc(op);
+				}
 			}
 			else if(opType == "3"){
-
+				if(op == "<" || op == ">" || op == "<=" || op == ">=" || op == "==" || op == "!="){
+					this.addQuaddProc(op);
+				}
 			}
 			else if(opType == "4"){
-
-			}
-			else{
-
-			}
-
-			
-			else 
-			else if(op == "<" || op == ">" || op == "<=" || op == ">=" || op == "==" || op == "!="){
-
-			}
-			else if(op == "||" || op == "&&"){
-
+				if(op == "||" || op == "&&"){
+					this.addQuaddProc(op);
+				}
 			}
 			else{
 				console.log("Not identified");
 			}
 		}
 		pushVal = (name: string) => { 
+			console.log("PUSHED", name);
+			
 			this.pileVals.push(name);
 		}
 
+		endOperation = () => {
+			console.log("ENDED:");
+			console.log("---");
+			this.pileOps.print();
+			this.pileVals.print();
+			console.log("---");
+			console.log(this.pileVals.pop())
+		}
+
 		pushOp = (op: string) => {
+			console.log("PUSHED", op);
 			this.pileOps.push(op);
+		}
+
+		private addQuaddProc(op: string, vAssign: boolean = false){
+			this.pileOps.pop();
+			this.pileVals.print();
+			console.log("**********");
+			
+			let operator = op;
+			let rightOnd = this.pileVals.pop();
+			let leftOnd = this.pileVals.pop();
+			
+			if(!vAssign){
+				let memSpace = "*" + Mem.request().toString();
+				console.log(`ADDED QUAD: ${operator}, ${leftOnd}, ${rightOnd}, ${memSpace}`);
+				this.squats.push(new Tuple(operator, leftOnd!, rightOnd!, memSpace));
+				this.pileVals.push(memSpace);
+				console.log("\n\n\n\n\n\n");
+			}
+			else{
+				console.log(`ADDED QUAD: ${operator}, ${rightOnd}, _, ${leftOnd}`);
+				this.squats.push(new Tuple(operator, rightOnd!, "", leftOnd));
+				this.pileVals.push(leftOnd!);
+				console.log("\n\n\n\n\n\n");
+			}
+			
+		}
+		addJumpT = (eValue: string) =>{
+			this.squats.push(new Tuple("JUMPT", eValue, "", "_"));
+			this.pileJump.push((this.squats.length - 1).toString())
+		}
+		addJumpF = (eValue: string) =>{
+			this.squats.push(new Tuple("JUMPF", eValue, "", "_"));
+			this.pileJump.push((this.squats.length - 1).toString())
+		}
+		addJump = () =>{
+			this.squats.push(new Tuple("JUMP", "", "", "_"));
+			this.pileJump.push((this.squats.length - 1).toString())
+		}
+		resolveJump = (customIdx? : number) => {
+			let idx:number;
+			if(!customIdx){
+				let jump = this.pileJump.pop();
+				if(!jump) throw new Error("NO JUMPS IN STACK");
+				idx = parseInt(jump);
+			}
+			else{
+				idx = customIdx;
+			}
+			
+			this.squats[idx].v4 = this.squats.length.toString();
+		}
+		elseIntersectionProc = () => {
+			let idxFix = this.pileJump.pop();
+			if(!idxFix) throw new Error("NO JUMPS IN STACK");
+			this.addJump();
+			this.resolveJump(parseInt(idxFix));
 		}
 
 
@@ -171,7 +267,10 @@ export namespace PROY_FINAL{
 			"CALL"				: ["id s_par CALA e_par"],
 			"CALA"				: ["XP0 CALA2", ""],
 			"CALA2"				: ["separ XP0 CALA2", ""],
-			"ASI"				: [["DIMID eq XP0", "$$ = JSON.stringify($1) + $2 + $3; yy.pushVal($1)"]],
+			"ASI"				: [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); //$$ = JSON.stringify($1) + $2 + $3;"]],
+			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal($1)']],
+			"ASI_EQ_R"			: [["eq", 'yy.pushOp($1)']],
+			/**/"ASI_"				: [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
 			"RET"				: ["ret s_par XP0 e_par"],
 			"REE"				: ["read s_par DIMID REE_ e_par"],
 			"REE_"				: ["separ DIMID REE_", ""],
@@ -179,28 +278,36 @@ export namespace PROY_FINAL{
 			"WL"				: ["W_C WL1"],
 			"WL1"				: ["separ W_C WL1", ""],
 			"W_C"				: ["STR", "XP0"],
-			"DEC"				: ["if s_par XP0 e_par then B DEC_"],
-			"DEC_"				: ["else B", ""],
+			"DEC"				: [["if s_par DEC_XP0_R e_par then DEC_B_R ELSE", 'yy.resolveJump()']],
+			"DEC_XP0_R"			: [["XP0", "yy.addJumpF($1);"]],
+			"DEC_B_R"			: [["B", '']],
+			"ELSE"				: ["ELSE_ELSE_R ELSE_B_R", ""],
+			"ELSE_B_R"			: [["B", '']],
+			"ELSE_ELSE_R"		: [["else", 'yy.elseIntersectionProc()']],
 			"REP"				: ["COND", "NCOND"],
 			"COND"				: ["while s_par XP0 e_par do B"],
 			"NCOND"				: ["from ASI to XP0 dof B"],
-			"DIMID"				: [["id DIMID_", '$$ = {n:$1, d:$2}']],
-			"DIMID_"			: [["s_corch XP0 e_corch", '$$ = $2'], ["", '']],
-			"XP0"				: [["XP1 XP0_", "$$ = $1 + $2; console.log($$); yy.pushVal(`#`)"]],
-			"XP0_"				: [["R_OP_T4 XP0", "$$ = $1 + $2; yy.pushVal($1)"], ["", "$$ = ``;"]],
+			"DIMID"				: [["id DIMID_", '$$ = {n:$1, d:$2}; console.log("DIMID", $$)']],
+			"DIMID_"			: [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; console.log("DIMID_", $$)'], ["", '']],
+			"DIMID_S_CORCH_R"	: [["s_corch", 'yy.pushCorchState();']],
+			"DIMID_E_CORCH_R"	: [["e_corch", 'yy.popCorchState();']],
+			"XP0"				: [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation()"]],
+			"XP0_"				: [["R_OP_T4 XP0", "$$ = $1 + $2;"], ["", "$$ = ``;"]],
 			"R_OP_T4"			: [["op_t4", "$$ = $1; yy.pushOp($1)"]],
 			"XP1"				: [["XP2 XP1_", "yy.checkOperation('4')"]],
-			"XP1_"				: [["R_OP_T3 XP1", "$$ = $1 + $2; yy.pushVal($1)"], ["", "$$ =``;"]],
+			"XP1_"				: [["R_OP_T3 XP1", "$$ = $1 + $2;"], ["", "$$ =``;"]],
 			"R_OP_T3"			: [["op_t3", "$$ = $1; yy.pushOp($1)"]],
 			"XP2"				: [["XP3 XP2_", "yy.checkOperation('3')"]],
-			"XP2_"				: [["R_OP_T2 XP2", "$$ = $1 + $2; yy.pushVal($1)"], ["", "$$ = ``"]],
+			"XP2_"				: [["R_OP_T2 XP2", "$$ = $1 + $2;"], ["", "$$ = ``"]],
 			"R_OP_T2"			: [["op_t2", "$$ = $1; yy.pushOp($1)"]],
 			"XP3"				: [["R_XP4 XP3_", "yy.checkOperation('2')"]],
-			"XP3_"				: [["R_OP_T1 XP3", "$$ = $1 + $2; yy.pushVal($1)"], ["", "$$ = ``"]],
+			"XP3_"				: [["R_OP_T1 XP3", "$$ = $1 + $2;"], ["", "$$ = ``"]],
 			"R_XP4"				: [["XP4", "yy.checkOperation('1')"]],
 			"R_OP_T1"			: [["op_t1", "$$ = $1; yy.pushOp($1)"]],
-			"XP4"				: [["XPP", "$$ = $1"], ["DIMID", "$$ = JSON.stringify($1); yy.pushVal($1)"], ["CALL", "$$ = $1; yy.pushVal($1)"], ["char", "$$ = $1; yy.pushVal($1)"], ["INTEGER", "$$ = $1; yy.pushVal($1)"], ["FLOAT", "$$ = $1;yy.pushVal($1)"]],
-			"XPP"				: [["s_par XP0 e_par", "$$ = $2"]],
+			"XP4"				: [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = JSON.stringify($1); yy.pushVal($$); console.log('lllDIMID')"], ["CALL", "$$ = $1; yy.pushVal($1); console.log('lllCALL')"], ["char", "$$ = $1; yy.pushVal($1); console.log('lllchar')"], ["INTEGER", "$$ = $1; yy.pushVal($1); console.log('lllINTEGER')"], ["FLOAT", "$$ = $1;yy.pushVal($1); console.log('lllFLOAT');"]],
+			"XPP"				: [["XPP_S_PAR_R XP0 XPP_E_PAR_R", "$$ = $2"]],
+			"XPP_S_PAR_R"		: [["s_par", 'yy.pushParthState();']],
+			"XPP_E_PAR_R"		: [["e_par", 'yy.popParthState();']],
 			"FTYPE"				: ["var_type", "void"],
 			"INTEGER"			: [["op_t2 integer", "$$ = $1 + $2"], ["integer", "$$ = $1"]],
 			"FLOAT"			: [["op_t2 float", "$$ = $1 + $2"], ["float", "$$ = $1"]],
@@ -220,6 +327,14 @@ export namespace PROY_FINAL{
 	 * Bitacora: Hice el diagrama visual de la gramatica con los puntos neuralgicos: https://www.lucidchart.com/invitations/accept/37bf2eb8-ff04-4caa-8572-6d12b5a26f83
 	 * Se hizo la tabla de variables. Algo complicado y tardo tiempo dado que el Jison 
 	 * 	no soporta acciones entre reglas.
+	 * 
+	 * Bitacora 4: Terminadas la producción de cuadruplos para estatutos lineales.
+	 * Se encontraron muchos errores en la producción dado que los corchetes requieren
+	 *  su propio separador en el stack de operadores/valores.
+	 * Se requirieron hacer reglas extra para hacer para poder establecer reglas.
+	 * Se intento hacer la estructura a=b=1+2 sin exito dado que la gramatica confunde el DIMID de la regla con el de XP0, haciendo imposible la integración
+	 * Se implementaron los cuadruplos del IF
+	 * Hay soporte para parentesis y corchetes
 	 */
 
 	var p = new Parser(grammar);
@@ -227,7 +342,7 @@ export namespace PROY_FINAL{
 	p.yy = new YYKontext();
 	console.log(p.parse(`
 			programa XD; 
-			var int: a[1+2],b,c;float: g,f,a[5 + 1 * 9];
+			var int: a[1+2*3],b,c;float: g,f,a[(5 + 1) * 9];
 			%% AASDASD
 			funcion int holas(int X, float y, char a123123);
 				var char: x,y,z[12];
@@ -235,13 +350,13 @@ export namespace PROY_FINAL{
 				holas(1,2,3);
 				a = 123;
 				b = 'g';
-				c = 123;
+				c = 123 - 1;
 				si (a == b) entonces {
 					mientras(r == 123 || v > 3 && getAll()) haz
 					{
-						c[5] = -123.0123e5621 + c[3];
+						c[5] = -123.0123e5621 + ghg[4];
 					}
-					a = a*b;
+					a = a * b;
 				} sino {
 					b= 'E';
 				}
@@ -252,8 +367,10 @@ export namespace PROY_FINAL{
 			}
 	`.replace("\t", "")));
 
-	p.yy.varTable.print()
-	p.yy.pileVals.print();
-	console.log(p.yy.state);
+
+	console.log(p.yy.squats);
+
+	//p.yy.varTable.print();
+	//p.yy.pileVals.print();
 	
 }
