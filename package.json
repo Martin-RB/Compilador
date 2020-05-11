@@ -1,0 +1,20 @@
+{
+  "name": "ts_prueba1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ebnf": "^1.7.4",
+    "jison": "^0.4.18",
+    "ts-compile": "^2.0.6",
+    "typed-lexer": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^13.7.7"
+  }
+}
