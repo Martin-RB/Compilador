@@ -14,14 +14,29 @@ export namespace PROY_FINAL{
 		}
 	}
 
+	interface vTableRow{
+		name: string,
+		type: string,
+		scope: string,
+		dimSize: string,
+		dir: any | HashMap<any> | undefined
+	}
+
 	class YYKontext{
 		state: string = `global`;
 		squats: Array<Tuple<string, string, string, string>> = new Array<Tuple<string, string, string, string>>();
-		varTable : HashMap<Tuple<string, string, string, string /**Puesto de manera auxiliar */, any | HashMap<any> | undefined>> = new HashMap<Tuple<string, string, string, string, any | HashMap<any> | undefined>>();
+		/*Nombre, tipo, scope, length, val*/
+		//varTable : HashMap<Tuple<string, string, string, string /**Puesto de manera auxiliar */, any | HashMap<any> | undefined>> = new HashMap<Tuple<string, string, string, string, any | HashMap<any> | undefined>>();
+		varTable = new HashMap<vTableRow>();
+
+		qb : HashMap<HashMap<HashMap<string>>> = new HashMap<HashMap<HashMap<string>>>();
 
 		pileVals = new Stack<string>();
 		pileOps = new Stack<string>();
 		pileJump = new Stack<string>();
+		pileFromTo = new Stack<string>();
+		pileType = new Stack<string>();
+		
 		// [["type", [["var1", "dimention"], [var2, dimention]], [type, []]]
 		addFromString = (array: Array<{t:string, vs: Array<{n:string, d:string}>}>, state: string) => {
 			array.forEach(t => {
@@ -61,15 +76,18 @@ export namespace PROY_FINAL{
 		}
 		addVariableToTable = (name: string, type: string, scope: string, dimSize: string) => {
 			if(!dimSize) dimSize = "1";
-			this.varTable.set(name, new Tuple<string, string, string, string, any | HashMap<any> | undefined>(name, type, scope, dimSize, undefined));
+			this.varTable.set(name, {name, type, scope, dimSize, dir: undefined});
 		}
 		addVariablesToTable = (names: string[], type: string, scope: string, dimSizes: Array<string>) => {
 			for (let i = 0; i < names.length; i++) {
 				const name = names[i];
 				const dimSize = dimSizes[i];
 
-				this.varTable.set(name, new Tuple<string, string, string, string, any | HashMap<any> | undefined>(name, type, scope, dimSize, undefined));
+				this.varTable.set(name, {name, type, scope, dimSize, dir: undefined});
 			}
+		}
+		setVariableDir = (name: string, idx?: string) => {
+
 		}
 /* 		getLastValue = () => {
 			return this.pileVals.pop();
@@ -137,7 +155,17 @@ export namespace PROY_FINAL{
 			let operator = op;
 			let rightOnd = this.pileVals.pop();
 			let leftOnd = this.pileVals.pop();
+			if(!rightOnd || !leftOnd) throw "Error de valores: Cantidad de valores incorrecta";
+			let rightType = this.pileType.pop();
+			let leftType = this.pileType.pop();
+			if(!rightType || !leftType) throw "Error de tipos: Cantidad de tipos incorrecta";
+
+			let typeResult = this.qb.get(leftType)?.get(rightType)?.get(op);
+			if(!typeResult || typeResult == "NOP") throw `Error de tipos:  ${leftOnd}:${leftType} ${op} ${rightOnd}${rightType} es incompatible`;
+
+			this.pushType(typeResult);
 			
+			this.pileType.print();
 			if(!vAssign){
 				let memSpace = "*" + Mem.request().toString();
 				console.log(`ADDED QUAD: ${operator}, ${leftOnd}, ${rightOnd}, ${memSpace}`);
@@ -153,19 +181,58 @@ export namespace PROY_FINAL{
 			}
 			
 		}
-		addJumpT = (eValue: string) =>{
-			this.squats.push(new Tuple("JUMPT", eValue, "", "_"));
-			this.pileJump.push((this.squats.length - 1).toString())
+		fromToComp = (v1:string, v2:string) => {
+			this.pushVal(v1);
+			this.pushVal(v2);
+			this.pushOp("<=");
+			this.checkOperation("3");
 		}
-		addJumpF = (eValue: string) =>{
-			this.squats.push(new Tuple("JUMPF", eValue, "", "_"));
-			this.pileJump.push((this.squats.length - 1).toString())
+		fromToSum = (v1:string, v2:string) => {
+			this.pushVal(v1);
+			this.pushOp("=");
+			this.pushVal(v1);
+			this.pushVal("1");
+			this.pushOp("+");
+			this.checkOperation("2");
+			this.checkOperation("0");
 		}
-		addJump = () =>{
-			this.squats.push(new Tuple("JUMP", "", "", "_"));
-			this.pileJump.push((this.squats.length - 1).toString())
+		fromToEndProc = () => {
+
 		}
-		resolveJump = (customIdx? : number) => {
+		addJumpT = (eValue: string, destiny?:boolean) =>{
+			let _dest = "_";
+			if(destiny){
+				_dest = this.pileJump.pop()!;
+			}
+			this.squats.push(new Tuple("JUMPT", eValue, "", _dest));
+			if(!destiny){
+				this.pileJump.push((this.squats.length - 1).toString())
+			}
+		}
+		addJumpF = (eValue: string, destiny?:boolean) =>{
+			let _dest = "_";
+			if(destiny){
+				_dest = this.pileJump.pop()!;
+			}
+			this.squats.push(new Tuple("JUMPF", eValue, "", _dest));
+			if(!destiny){
+				this.pileJump.push((this.squats.length - 1).toString())
+			}
+		}
+		addJump = (dontAwait?:boolean) =>{
+			let _dest = "_";
+			if(dontAwait){
+				_dest = this.pileJump.pop()!;
+			}
+			this.squats.push(new Tuple("JUMP", "", "", _dest));
+			if(!dontAwait){
+				this.pileJump.push((this.squats.length - 1).toString())
+			}
+		}
+		addJumpSavepoint = () => {
+			this.pileJump.push((this.squats.length).toString());
+		}
+		resolveJump = (customIdx? : number, destiny?: number) => {
 			let idx:number;
 			if(!customIdx){
 				let jump = this.pileJump.pop();
@@ -175,8 +242,13 @@ export namespace PROY_FINAL{
 			else{
 				idx = customIdx;
 			}
+			if(destiny){
+				this.squats[idx].v4 = destiny.toString();
+			}
+			else{
+				this.squats[idx].v4 = this.squats.length.toString();
+			}
 			
-			this.squats[idx].v4 = this.squats.length.toString();
 		}
 		elseIntersectionProc = () => {
 			let idxFix = this.pileJump.pop();
@@ -184,14 +256,393 @@ export namespace PROY_FINAL{
 			this.addJump();
 			this.resolveJump(parseInt(idxFix));
 		}
+		getVariableType = (name: any) => {
+			let variable = this.varTable.get(name);
+			if(!variable){ throw `Variable ${name} no existente`}
+
+			return variable.type;
+		}
+		pushType = (type: string) => {
+			console.log("PUSHED type: " + type);
+			this.pileType.push(type);
+			this.pileType.print()
+		}
 
 
-		addQuadReg = () => {
+		decisionCheck = () => {
+			let t = this.pileType.pop()
+			if(t != "bool"){
+				throw `Tipo ${t} no esperado. Se esperaba 'bool'`;
+			}
+		}
+		dimidTypeCheck = () => {
+			let t = this.pileType.pop()
+			if(t != "int"){
+				throw `Tipo ${t} no esperado. Se esperaba 'int'`;
+			}
+		}
+
+		printQuads = () => {
+			this.squats.forEach((el, i) => {
+				console.log(`${i}: ${el.v1}\t${el.v2}\t${el.v3}\t${el.v4};`);
+			});
+		}
+
+		private setQB = () => {
+			let r = new HashMap<HashMap<HashMap<string>>>();
+			let XD = {
+				"int": {
+					"int": {
+						"+": "int",
+						"-": "int",
+						"*": "float",
+						"/": "float",
+						"<": "bool",
+						">": "bool",
+						"<=": "bool",
+						">=": "bool",
+						"==": "bool",
+						"&&": "NOP",
+						"||": "NOP",
+						"=": "void"
+					},
+					"float": {
+						"+": "float",
+						"-": "float",
+						"*":"float",
+						"/":"float",
+						"<":"bool",
+						">":"bool",
+						"<=":"bool",
+						">=":"bool",
+						"==":"bool",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "void"
+					},
+					"char":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "NOP"
+					},
+					"bool":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "NOP"
+					},
+					"void":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "NOP"
+					},
+				},
+				"float":{
+					"int": {
+						"+": "float",
+						"-": "float",
+						"*":"float",
+						"/":"float",
+						"<":"bool",
+						">":"bool",
+						"<=":"bool",
+						">=":"bool",
+						"==":"bool",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "void"
+					},
+					"float": {
+						"+": "float",
+						"-": "float",
+						"*":"float",
+						"/":"float",
+						"<":"bool",
+						">":"bool",
+						"<=":"bool",
+						">=":"bool",
+						"==":"bool",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "void"
+					},
+					"char":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "NOP"
+					},
+					"bool":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+						"=": "NOP"
+					},
+					"void":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+				},
+				"char":{
+					"int": {
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"float": {
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"char":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"bool",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"bool":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"void":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+				},
+				"bool":{
+					"int": {
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"float": {
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"char":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"bool":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"bool",
+						"&&":"bool",
+						"||":"bool",
+					},
+					"void":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+				},
+				"void":{
+					"int": {
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"float": {
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"char":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"bool":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+					"void":{
+						"+": "NOP",
+						"-": "NOP",
+						"*":"NOP",
+						"/":"NOP",
+						"<":"NOP",
+						">":"NOP",
+						"<=":"NOP",
+						">=":"NOP",
+						"==":"NOP",
+						"&&":"NOP",
+						"||":"NOP",
+					},
+				}
+			}
+			r.buildFromJSON(XD);
 			
+			this.qb = r;
 		}
 
 		constructor(){
-
+			this.setQB();
 		}
 	}
 	
@@ -217,7 +668,7 @@ export namespace PROY_FINAL{
 				[`funcion`,                   "return 'func';"],
 				[`principal`,                   "return 'main_f';"],
 				[`var`,                   "return 'var_dec';"], 
-				[`(int|float|char)`,                   "return 'var_type';"],
+				[`(int|float|char|bool)`,                   "return 'var_type';"],
 				[`\\[`,                   "return 's_corch';"],
 				[`\\]`,                   "return 'e_corch';"],
 				[`,`,                   "return 'separ';"],
@@ -257,18 +708,18 @@ export namespace PROY_FINAL{
 			"VG"				: [["var_dec TD", 'yy.addFromString($2, yy.state); yy.state = `local`;'], ["", ""]],
 			"TD"				: [["var_type definer TDL1 e_stmt TDR", "$$ = [{t:$1, vs:$3}].concat($5);"]],
 			"TDR"				: [["TD", "$$ = $1"], ["", "$$ = undefined"]],
-			"TDL1"				: [["DIMID TDL2", "$$ = [$1].concat($2);"]],
-			"TDL2"				: [["separ DIMID TDL2", "$$ = [$2].concat($3);"], ["", '']],
-			"FD"				: [["func FTYPE id s_par PDL1 e_par e_stmt VG B FD", ""], ["", ""]],
+			"TDL1"				: [["DIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
+			"TDL2"				: [["separ DIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
+			"FD"				: [["func FTYPE id s_par PDL1 e_par e_stmt VG B FD", "yy.addVariableToTable($3, $2, `global`, `1`)"], ["", ""]],
 			"PDL1"				: ["var_type id PDL2", ""],
 			"PDL2"				: ["separ var_type id PDL2", ""],
 			"ST"				: ["STDEF ST", ""],
 			"STDEF"				: ["ASI e_stmt", "CALL e_stmt", "RET e_stmt", "REE e_stmt", "WRT e_stmt", "DEC", "REP"],
-			"CALL"				: ["id s_par CALA e_par"],
-			"CALA"				: ["XP0 CALA2", ""],
-			"CALA2"				: ["separ XP0 CALA2", ""],
-			"ASI"				: [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); //$$ = JSON.stringify($1) + $2 + $3;"]],
-			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal($1)']],
+			"CALL"				: [["id s_par CALA e_par", "$$ = $1;"]],
+			"CALA"				: [["XP0 CALA2", "yy.pileType.pop(); console.log(`ñññ`); yy.pileType.print();"], ["", ""]],
+			"CALA2"				: [["separ XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
+			"ASI"				: [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop(); yy.pileType.pop();"]],
+			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal(JSON.stringify($1)); yy.pushType(yy.getVariableType($1.n));']],
 			"ASI_EQ_R"			: [["eq", 'yy.pushOp($1)']],
 			/**/"ASI_"				: [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
 			"RET"				: ["ret s_par XP0 e_par"],
@@ -279,16 +730,20 @@ export namespace PROY_FINAL{
 			"WL1"				: ["separ W_C WL1", ""],
 			"W_C"				: ["STR", "XP0"],
 			"DEC"				: [["if s_par DEC_XP0_R e_par then DEC_B_R ELSE", 'yy.resolveJump()']],
-			"DEC_XP0_R"			: [["XP0", "yy.addJumpF($1);"]],
+			/**/"DEC_XP0_R"			: [["XP0", "yy.decisionCheck(); yy.addJumpF($1);"]],
 			"DEC_B_R"			: [["B", '']],
 			"ELSE"				: ["ELSE_ELSE_R ELSE_B_R", ""],
 			"ELSE_B_R"			: [["B", '']],
 			"ELSE_ELSE_R"		: [["else", 'yy.elseIntersectionProc()']],
 			"REP"				: ["COND", "NCOND"],
-			"COND"				: ["while s_par XP0 e_par do B"],
-			"NCOND"				: ["from ASI to XP0 dof B"],
+			"COND"				: ["COND_WHILE_R s_par COND_XP0_R e_par do COND_B_R"],
+			/**/"COND_WHILE_R"		: [["while", "yy.addJumpSavepoint();"]],
+			/**/"COND_XP0_R"		: [["XP0", "yy.addJumpF($1)"]],
+			/**/"COND_B_R"			: [["B", "yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true);"]],
+			"NCOND"				: [["from NCOND_P1_R dof B", "yy.fromToSum(yy.pileFromTo.pop()); yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true)"]],
+			/**/"NCOND_P1_R"		: [["ASI to XP0", "yy.pileFromTo.push($1); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop())"]],
 			"DIMID"				: [["id DIMID_", '$$ = {n:$1, d:$2}; console.log("DIMID", $$)']],
-			"DIMID_"			: [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; console.log("DIMID_", $$)'], ["", '']],
+			/**/"DIMID_"			: [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; yy.dimidTypeCheck(); console.log("DIMID_", $$)'], ["", '']],
 			"DIMID_S_CORCH_R"	: [["s_corch", 'yy.pushCorchState();']],
 			"DIMID_E_CORCH_R"	: [["e_corch", 'yy.popCorchState();']],
 			"XP0"				: [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation()"]],
@@ -304,7 +759,7 @@ export namespace PROY_FINAL{
 			"XP3_"				: [["R_OP_T1 XP3", "$$ = $1 + $2;"], ["", "$$ = ``"]],
 			"R_XP4"				: [["XP4", "yy.checkOperation('1')"]],
 			"R_OP_T1"			: [["op_t1", "$$ = $1; yy.pushOp($1)"]],
-			"XP4"				: [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = JSON.stringify($1); yy.pushVal($$); console.log('lllDIMID')"], ["CALL", "$$ = $1; yy.pushVal($1); console.log('lllCALL')"], ["char", "$$ = $1; yy.pushVal($1); console.log('lllchar')"], ["INTEGER", "$$ = $1; yy.pushVal($1); console.log('lllINTEGER')"], ["FLOAT", "$$ = $1;yy.pushVal($1); console.log('lllFLOAT');"]],
+			"XP4"				: [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = JSON.stringify($1); yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal($1); yy.pushType(yy.getVariableType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
 			"XPP"				: [["XPP_S_PAR_R XP0 XPP_E_PAR_R", "$$ = $2"]],
 			"XPP_S_PAR_R"		: [["s_par", 'yy.pushParthState();']],
 			"XPP_E_PAR_R"		: [["e_par", 'yy.popParthState();']],
@@ -335,29 +790,43 @@ export namespace PROY_FINAL{
 	 * Se intento hacer la estructura a=b=1+2 sin exito dado que la gramatica confunde el DIMID de la regla con el de XP0, haciendo imposible la integración
 	 * Se implementaron los cuadruplos del IF
 	 * Hay soporte para parentesis y corchetes
+	 * 
+	 * Bitacora 5:
+	 * Terminada la producción de cuadruplos para estatutos no lineales. El desde v = n hasta r fue bastante demandante y se tuvo que agregar una pileVals
+	 * Falta hacer la validación de tipos y la administración de memoria
 	 */
 
 	var p = new Parser(grammar);
 	// Contexto interno
 	p.yy = new YYKontext();
-	console.log(p.parse(`
+	/* console.log(p.parse(`
 			programa XD; 
 			var int: a[1+2*3],b,c;float: g,f,a[(5 + 1) * 9];
 			%% AASDASD
+
+			funcion bool getAll();
+			{
+				a = 1;
+			}
+
 			funcion int holas(int X, float y, char a123123);
 				var char: x,y,z[12];
 			{
 				holas(1,2,3);
 				a = 123;
-				b = 'g';
+				b = 2;
 				c = 123 - 1;
 				si (a == b) entonces {
-					mientras(r == 123 || v > 3 && getAll()) haz
+					mientras(a[1] == 123 || a[3] > 3 && getAll()) haz
 					{
 						c[5] = -123.0123e5621 + ghg[4];
 					}
 					a = a * b;
 				} sino {
+					desde g = 5 hasta 41 hacer
+					{
+						g = 7 + 4 * 47;
+					}
 					b= 'E';
 				}
 			}
@@ -365,12 +834,52 @@ export namespace PROY_FINAL{
 			principal (){
 				a = 0;
 			}
+	`.replace("\t", ""))); */
+	console.log(p.parse(`
+			programa XD; 
+			var int: a[(1+2)-3],b,c; float: r;
+			%% AASDASD
+			
+			funcion bool getAll();
+			{
+				a = 1;
+			}
+
+			funcion int holas(int X, float y, char a123123);
+				var char: x,y,z[12];
+			{
+				holas(1,2,3);
+				a = 123;
+				b = 2;
+				c = 123 - 1;
+				si (a == b) entonces {
+					mientras(a[1] == 123 || a[3] > 3 && getAll()) haz
+					{
+						c[5] = -123.0123e5621 + ghg[4];
+					}
+					a = a * b;
+				} sino {
+					desde g = 5 hasta 41 hacer
+					{
+						g = 7 + 4 * 47;
+					}
+					b= 'E';
+				}
+			}
+
+			principal (){
+				a = 0 + 5;
+			}
 	`.replace("\t", "")));
 
 
-	console.log(p.yy.squats);
+	console.log(p.yy.printQuads());
+	p.yy.varTable.print()
+	p.yy.pileType.print();
+	
 
 	//p.yy.varTable.print();
 	//p.yy.pileVals.print();
 	
 }
+

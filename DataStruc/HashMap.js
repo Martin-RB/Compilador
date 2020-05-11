@@ -41,6 +41,21 @@ var HashMap = /** @class */ (function () {
             el.print();
         });
     };
+    HashMap.prototype.buildFromJSON = function (obj) {
+        for (var key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                var element = obj[key];
+                if (typeof element == "object") {
+                    var actual = new HashMap();
+                    actual.buildFromJSON(element);
+                    this._array.push(new Tuple_1.Tuple(key, actual));
+                }
+                else {
+                    this._array.push(new Tuple_1.Tuple(key, element));
+                }
+            }
+        }
+    };
     return HashMap;
 }());
 exports.HashMap = HashMap;
