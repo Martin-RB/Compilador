@@ -4,7 +4,7 @@
   "description": "",
   "main": "PROY_FINAL.js",
   "scripts": {
-    "start" : "node .",
+    "start": "node .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -16,6 +16,6 @@
     "typed-lexer": "^1.0.2"
   },
   "devDependencies": {
-    "@types/node": "^13.11.1"
+    "@types/node": "^13.13.5"
   }
 }

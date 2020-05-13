@@ -22,6 +22,11 @@ export namespace PROY_FINAL{
 		dir: any | HashMap<any> | undefined
 	}
 
+	interface DIMID{
+		n: string;
+		d?: string;
+	}
+
 	class YYKontext{
 		state: string = `global`;
 		squats: Array<Tuple<string, string, string, string>> = new Array<Tuple<string, string, string, string>>();
@@ -127,7 +132,16 @@ export namespace PROY_FINAL{
 				console.log("Not identified");
 			}
 		}
-		pushVal = (name: string) => { 
+		pushVal = (value: any) => { 
+
+			let name = "";
+			if(typeof value == "object"){
+				name = value.n;
+			}
+			else if(typeof value == "string"){
+				name = value;
+			}
+
 			console.log("PUSHED", name);
 			
 			this.pileVals.push(name);
@@ -150,14 +164,17 @@ export namespace PROY_FINAL{
 		private addQuaddProc(op: string, vAssign: boolean = false){
 			this.pileOps.pop();
 			this.pileVals.print();
+			console.log("Types:");this.pileType.print()
 			console.log("**********");
 			
 			let operator = op;
 			let rightOnd = this.pileVals.pop();
 			let leftOnd = this.pileVals.pop();
 			if(!rightOnd || !leftOnd) throw "Error de valores: Cantidad de valores incorrecta";
+			console.log(JSON.stringify(this.pileType.peek()))
 			let rightType = this.pileType.pop();
-			let leftType = this.pileType.pop();
+			console.log(this.pileType.peek())
+			let leftType = this.pileType.pop();		
 			if(!rightType || !leftType) throw "Error de tipos: Cantidad de tipos incorrecta";
 
 			let typeResult = this.qb.get(leftType)?.get(rightType)?.get(op);
@@ -165,7 +182,7 @@ export namespace PROY_FINAL{
 
 			this.pushType(typeResult);
 			
-			this.pileType.print();
+			console.log("Types:");this.pileType.print();
 			if(!vAssign){
 				let memSpace = "*" + Mem.request().toString();
 				console.log(`ADDED QUAD: ${operator}, ${leftOnd}, ${rightOnd}, ${memSpace}`);
@@ -187,11 +204,21 @@ export namespace PROY_FINAL{
 			this.pushOp("<=");
 			this.checkOperation("3");
 		}
-		fromToSum = (v1:string, v2:string) => {
-			this.pushVal(v1);
+		fromToSum = (summableVar:any) => {
+			let name = "";
+			if(typeof summableVar == "object"){
+				name = summableVar.n;
+			}
+			else if(typeof summableVar == "string"){
+				name = summableVar
+			}
+			this.pushVal(name);
+			this.pileType.push(this.getVariableType(name));
 			this.pushOp("=");
-			this.pushVal(v1);
+			this.pushVal(name);
+			this.pileType.push(this.getVariableType(name));
 			this.pushVal("1");
+			this.pileType.push("int");
 			this.pushOp("+");
 			this.checkOperation("2");
 			this.checkOperation("0");
@@ -210,6 +237,8 @@ export namespace PROY_FINAL{
 			}
 		}
 		addJumpF = (eValue: string, destiny?:boolean) =>{
+			console.log("eValue", eValue);
+			
 			let _dest = "_";
 			if(destiny){
 				_dest = this.pileJump.pop()!;
@@ -257,6 +286,8 @@ export namespace PROY_FINAL{
 			this.resolveJump(parseInt(idxFix));
 		}
 		getVariableType = (name: any) => {
+			console.log(name);
+			
 			let variable = this.varTable.get(name);
 			if(!variable){ throw `Variable ${name} no existente`}
 
@@ -265,11 +296,12 @@ export namespace PROY_FINAL{
 		pushType = (type: string) => {
 			console.log("PUSHED type: " + type);
 			this.pileType.push(type);
-			this.pileType.print()
+			console.log("Types:");this.pileType.print()
 		}
 
 
 		decisionCheck = () => {
+			console.log("Types:");this.pileType.print()
 			let t = this.pileType.pop()
 			if(t != "bool"){
 				throw `Tipo ${t} no esperado. Se esperaba 'bool'`;
@@ -304,7 +336,7 @@ export namespace PROY_FINAL{
 						"==": "bool",
 						"&&": "NOP",
 						"||": "NOP",
-						"=": "void"
+						"=": "int"
 					},
 					"float": {
 						"+": "float",
@@ -318,7 +350,7 @@ export namespace PROY_FINAL{
 						"==":"bool",
 						"&&":"NOP",
 						"||":"NOP",
-						"=": "void"
+						"=": "int"
 					},
 					"char":{
 						"+": "NOP",
@@ -376,7 +408,7 @@ export namespace PROY_FINAL{
 						"==":"bool",
 						"&&":"NOP",
 						"||":"NOP",
-						"=": "void"
+						"=": "float"
 					},
 					"float": {
 						"+": "float",
@@ -390,7 +422,7 @@ export namespace PROY_FINAL{
 						"==":"bool",
 						"&&":"NOP",
 						"||":"NOP",
-						"=": "void"
+						"=": "float"
 					},
 					"char":{
 						"+": "NOP",
@@ -703,23 +735,24 @@ export namespace PROY_FINAL{
 		"bnf": {
 			"S"				: [["init_prgr id e_stmt SS", "yy.addVariableToTable($2, `void`, `global`, `1`);"]],
 			"SS"			: ["VG FD M"],
-			"M"				: ["main_f s_par e_par B"],
+			"M"				: ["main_f s_par e_par VG B"],
 			"B"				: ["s_bck ST e_bck"],
 			"VG"				: [["var_dec TD", 'yy.addFromString($2, yy.state); yy.state = `local`;'], ["", ""]],
 			"TD"				: [["var_type definer TDL1 e_stmt TDR", "$$ = [{t:$1, vs:$3}].concat($5);"]],
 			"TDR"				: [["TD", "$$ = $1"], ["", "$$ = undefined"]],
 			"TDL1"				: [["DIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
 			"TDL2"				: [["separ DIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
-			"FD"				: [["func FTYPE id s_par PDL1 e_par e_stmt VG B FD", "yy.addVariableToTable($3, $2, `global`, `1`)"], ["", ""]],
+			"FD"				: [["FD_DEC_R VG B FD", ""], ["", ""]],
+			"FD_DEC_R"			: [["func FTYPE id s_par PDL1 e_par e_stmt", "yy.addVariableToTable($3, $2, `global`, `1`)"]],
 			"PDL1"				: ["var_type id PDL2", ""],
 			"PDL2"				: ["separ var_type id PDL2", ""],
 			"ST"				: ["STDEF ST", ""],
-			"STDEF"				: ["ASI e_stmt", "CALL e_stmt", "RET e_stmt", "REE e_stmt", "WRT e_stmt", "DEC", "REP"],
+			/**/"STDEF"				: [["ASI e_stmt", "yy.pileType.pop();"], ["CALL e_stmt", ""], ["RET e_stmt", ""], ["REE e_stmt", ""], ["WRT e_stmt", ""], ["DEC", ""], ["REP", ""]],
 			"CALL"				: [["id s_par CALA e_par", "$$ = $1;"]],
-			"CALA"				: [["XP0 CALA2", "yy.pileType.pop(); console.log(`ñññ`); yy.pileType.print();"], ["", ""]],
+			"CALA"				: [["XP0 CALA2", "yy.pileType.pop(); console.log(`ñññ`); console.log('Types:');yy.pileType.print();"], ["", ""]],
 			"CALA2"				: [["separ XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
-			"ASI"				: [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop(); yy.pileType.pop();"]],
-			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal(JSON.stringify($1)); yy.pushType(yy.getVariableType($1.n));']],
+			"ASI"				: [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop();"]],
+			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal($1); console.log("rrr"); yy.pushType(yy.getVariableType($1.n));']],
 			"ASI_EQ_R"			: [["eq", 'yy.pushOp($1)']],
 			/**/"ASI_"				: [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
 			"RET"				: ["ret s_par XP0 e_par"],
@@ -738,7 +771,7 @@ export namespace PROY_FINAL{
 			"REP"				: ["COND", "NCOND"],
 			"COND"				: ["COND_WHILE_R s_par COND_XP0_R e_par do COND_B_R"],
 			/**/"COND_WHILE_R"		: [["while", "yy.addJumpSavepoint();"]],
-			/**/"COND_XP0_R"		: [["XP0", "yy.addJumpF($1)"]],
+			/**/"COND_XP0_R"		: [["XP0", "console.log('v', $1);yy.addJumpF($1); yy.pileVals.pop(); yy.pileType.pop()"]],
 			/**/"COND_B_R"			: [["B", "yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true);"]],
 			"NCOND"				: [["from NCOND_P1_R dof B", "yy.fromToSum(yy.pileFromTo.pop()); yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true)"]],
 			/**/"NCOND_P1_R"		: [["ASI to XP0", "yy.pileFromTo.push($1); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop())"]],
@@ -746,8 +779,8 @@ export namespace PROY_FINAL{
 			/**/"DIMID_"			: [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; yy.dimidTypeCheck(); console.log("DIMID_", $$)'], ["", '']],
 			"DIMID_S_CORCH_R"	: [["s_corch", 'yy.pushCorchState();']],
 			"DIMID_E_CORCH_R"	: [["e_corch", 'yy.popCorchState();']],
-			"XP0"				: [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation()"]],
-			"XP0_"				: [["R_OP_T4 XP0", "$$ = $1 + $2;"], ["", "$$ = ``;"]],
+			/**/"XP0"				: [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation();"]],
+			/**/"XP0_"				: [["R_OP_T4 XP1 XP0_", "$$ = $2; console.log('first', $1, $2, yy.pileVals.peek());"], ["", "console.log('end');"]],
 			"R_OP_T4"			: [["op_t4", "$$ = $1; yy.pushOp($1)"]],
 			"XP1"				: [["XP2 XP1_", "yy.checkOperation('4')"]],
 			"XP1_"				: [["R_OP_T3 XP1", "$$ = $1 + $2;"], ["", "$$ =``;"]],
@@ -759,7 +792,7 @@ export namespace PROY_FINAL{
 			"XP3_"				: [["R_OP_T1 XP3", "$$ = $1 + $2;"], ["", "$$ = ``"]],
 			"R_XP4"				: [["XP4", "yy.checkOperation('1')"]],
 			"R_OP_T1"			: [["op_t1", "$$ = $1; yy.pushOp($1)"]],
-			"XP4"				: [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = JSON.stringify($1); yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal($1); yy.pushType(yy.getVariableType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
+			"XP4"				: [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = $1; yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal($1); yy.pushType(yy.getVariableType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
 			"XPP"				: [["XPP_S_PAR_R XP0 XPP_E_PAR_R", "$$ = $2"]],
 			"XPP_S_PAR_R"		: [["s_par", 'yy.pushParthState();']],
 			"XPP_E_PAR_R"		: [["e_par", 'yy.popParthState();']],
@@ -794,6 +827,9 @@ export namespace PROY_FINAL{
 	 * Bitacora 5:
 	 * Terminada la producción de cuadruplos para estatutos no lineales. El desde v = n hasta r fue bastante demandante y se tuvo que agregar una pileVals
 	 * Falta hacer la validación de tipos y la administración de memoria
+	 * 
+	 * Bitacora 6: Establecimiento de validación de tipos. OMG, esto es demasiado uwu
+	 * 
 	 */
 
 	var p = new Parser(grammar);
@@ -855,20 +891,28 @@ export namespace PROY_FINAL{
 				si (a == b) entonces {
 					mientras(a[1] == 123 || a[3] > 3 && getAll()) haz
 					{
-						c[5] = -123.0123e5621 + ghg[4];
+						c[5] = -123.0123e5621 + a[4];
 					}
 					a = a * b;
 				} sino {
-					desde g = 5 hasta 41 hacer
+					desde a = 5 hasta 41 hacer
 					{
-						g = 7 + 4 * 47;
+						a = 7 + 4 * 47;
 					}
-					b= 'E';
+					b= 123;
 				}
 			}
 
-			principal (){
+			principal ()
+			var float:hg,q;
+			{
 				a = 0 + 5;
+
+				desde hg = 5 hasta 41 hacer
+				{
+					hg = 7 + 4 * 47;
+				}
+				q= 123;
 			}
 	`.replace("\t", "")));
 

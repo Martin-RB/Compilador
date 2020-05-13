@@ -120,7 +120,14 @@ var PROY_FINAL;
                     console.log("Not identified");
                 }
             };
-            this.pushVal = function (name) {
+            this.pushVal = function (value) {
+                var name = "";
+                if (typeof value == "object") {
+                    name = value.n;
+                }
+                else if (typeof value == "string") {
+                    name = value;
+                }
                 console.log("PUSHED", name);
                 _this.pileVals.push(name);
             };
@@ -142,11 +149,21 @@ var PROY_FINAL;
                 _this.pushOp("<=");
                 _this.checkOperation("3");
             };
-            this.fromToSum = function (v1, v2) {
-                _this.pushVal(v1);
+            this.fromToSum = function (summableVar) {
+                var name = "";
+                if (typeof summableVar == "object") {
+                    name = summableVar.n;
+                }
+                else if (typeof summableVar == "string") {
+                    name = summableVar;
+                }
+                _this.pushVal(name);
+                _this.pileType.push(_this.getVariableType(name));
                 _this.pushOp("=");
-                _this.pushVal(v1);
+                _this.pushVal(name);
+                _this.pileType.push(_this.getVariableType(name));
                 _this.pushVal("1");
+                _this.pileType.push("int");
                 _this.pushOp("+");
                 _this.checkOperation("2");
                 _this.checkOperation("0");
@@ -164,6 +181,7 @@ var PROY_FINAL;
                 }
             };
             this.addJumpF = function (eValue, destiny) {
+                console.log("eValue", eValue);
                 var _dest = "_";
                 if (destiny) {
                     _dest = _this.pileJump.pop();
@@ -212,6 +230,7 @@ var PROY_FINAL;
                 _this.resolveJump(parseInt(idxFix));
             };
             this.getVariableType = function (name) {
+                console.log(name);
                 var variable = _this.varTable.get(name);
                 if (!variable) {
                     throw "Variable " + name + " no existente";
@@ -221,9 +240,12 @@ var PROY_FINAL;
             this.pushType = function (type) {
                 console.log("PUSHED type: " + type);
                 _this.pileType.push(type);
+                console.log("Types:");
                 _this.pileType.print();
             };
             this.decisionCheck = function () {
+                console.log("Types:");
+                _this.pileType.print();
                 var t = _this.pileType.pop();
                 if (t != "bool") {
                     throw "Tipo " + t + " no esperado. Se esperaba 'bool'";
@@ -256,7 +278,7 @@ var PROY_FINAL;
                             "==": "bool",
                             "&&": "NOP",
                             "||": "NOP",
-                            "=": "void"
+                            "=": "int"
                         },
                         "float": {
                             "+": "float",
@@ -270,7 +292,7 @@ var PROY_FINAL;
                             "==": "bool",
                             "&&": "NOP",
                             "||": "NOP",
-                            "=": "void"
+                            "=": "int"
                         },
                         "char": {
                             "+": "NOP",
@@ -328,7 +350,7 @@ var PROY_FINAL;
                             "==": "bool",
                             "&&": "NOP",
                             "||": "NOP",
-                            "=": "void"
+                            "=": "float"
                         },
                         "float": {
                             "+": "float",
@@ -342,7 +364,7 @@ var PROY_FINAL;
                             "==": "bool",
                             "&&": "NOP",
                             "||": "NOP",
-                            "=": "void"
+                            "=": "float"
                         },
                         "char": {
                             "+": "NOP",
@@ -598,13 +620,17 @@ var PROY_FINAL;
             var _a, _b;
             this.pileOps.pop();
             this.pileVals.print();
+            console.log("Types:");
+            this.pileType.print();
             console.log("**********");
             var operator = op;
             var rightOnd = this.pileVals.pop();
             var leftOnd = this.pileVals.pop();
             if (!rightOnd || !leftOnd)
                 throw "Error de valores: Cantidad de valores incorrecta";
+            console.log(JSON.stringify(this.pileType.peek()));
             var rightType = this.pileType.pop();
+            console.log(this.pileType.peek());
             var leftType = this.pileType.pop();
             if (!rightType || !leftType)
                 throw "Error de tipos: Cantidad de tipos incorrecta";
@@ -612,6 +638,7 @@ var PROY_FINAL;
             if (!typeResult || typeResult == "NOP")
                 throw "Error de tipos:  " + leftOnd + ":" + leftType + " " + op + " " + rightOnd + rightType + " es incompatible";
             this.pushType(typeResult);
+            console.log("Types:");
             this.pileType.print();
             if (!vAssign) {
                 var memSpace = "*" + Mem.request().toString();
@@ -678,23 +705,24 @@ var PROY_FINAL;
         "bnf": {
             "S": [["init_prgr id e_stmt SS", "yy.addVariableToTable($2, `void`, `global`, `1`);"]],
             "SS": ["VG FD M"],
-            "M": ["main_f s_par e_par B"],
+            "M": ["main_f s_par e_par VG B"],
             "B": ["s_bck ST e_bck"],
             "VG": [["var_dec TD", 'yy.addFromString($2, yy.state); yy.state = `local`;'], ["", ""]],
             "TD": [["var_type definer TDL1 e_stmt TDR", "$$ = [{t:$1, vs:$3}].concat($5);"]],
             "TDR": [["TD", "$$ = $1"], ["", "$$ = undefined"]],
             "TDL1": [["DIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
             "TDL2": [["separ DIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
-            "FD": [["func FTYPE id s_par PDL1 e_par e_stmt VG B FD", "yy.addVariableToTable($3, $2, `global`, `1`)"], ["", ""]],
+            "FD": [["FD_DEC_R VG B FD", ""], ["", ""]],
+            "FD_DEC_R": [["func FTYPE id s_par PDL1 e_par e_stmt", "yy.addVariableToTable($3, $2, `global`, `1`)"]],
             "PDL1": ["var_type id PDL2", ""],
             "PDL2": ["separ var_type id PDL2", ""],
             "ST": ["STDEF ST", ""],
-            "STDEF": ["ASI e_stmt", "CALL e_stmt", "RET e_stmt", "REE e_stmt", "WRT e_stmt", "DEC", "REP"],
+            /**/ "STDEF": [["ASI e_stmt", "yy.pileType.pop();"], ["CALL e_stmt", ""], ["RET e_stmt", ""], ["REE e_stmt", ""], ["WRT e_stmt", ""], ["DEC", ""], ["REP", ""]],
             "CALL": [["id s_par CALA e_par", "$$ = $1;"]],
-            "CALA": [["XP0 CALA2", "yy.pileType.pop(); console.log(`ñññ`); yy.pileType.print();"], ["", ""]],
+            "CALA": [["XP0 CALA2", "yy.pileType.pop(); console.log(`ñññ`); console.log('Types:');yy.pileType.print();"], ["", ""]],
             "CALA2": [["separ XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
-            "ASI": [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop(); yy.pileType.pop();"]],
-            "ASI_DIMID_R": [["DIMID", 'yy.pushVal(JSON.stringify($1)); yy.pushType(yy.getVariableType($1.n));']],
+            "ASI": [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop();"]],
+            "ASI_DIMID_R": [["DIMID", 'yy.pushVal($1); console.log("rrr"); yy.pushType(yy.getVariableType($1.n));']],
             "ASI_EQ_R": [["eq", 'yy.pushOp($1)']],
             /**/ "ASI_": [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
             "RET": ["ret s_par XP0 e_par"],
@@ -713,7 +741,7 @@ var PROY_FINAL;
             "REP": ["COND", "NCOND"],
             "COND": ["COND_WHILE_R s_par COND_XP0_R e_par do COND_B_R"],
             /**/ "COND_WHILE_R": [["while", "yy.addJumpSavepoint();"]],
-            /**/ "COND_XP0_R": [["XP0", "yy.addJumpF($1)"]],
+            /**/ "COND_XP0_R": [["XP0", "console.log('v', $1);yy.addJumpF($1); yy.pileVals.pop(); yy.pileType.pop()"]],
             /**/ "COND_B_R": [["B", "yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true);"]],
             "NCOND": [["from NCOND_P1_R dof B", "yy.fromToSum(yy.pileFromTo.pop()); yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true)"]],
             /**/ "NCOND_P1_R": [["ASI to XP0", "yy.pileFromTo.push($1); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop())"]],
@@ -721,8 +749,8 @@ var PROY_FINAL;
             /**/ "DIMID_": [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; yy.dimidTypeCheck(); console.log("DIMID_", $$)'], ["", '']],
             "DIMID_S_CORCH_R": [["s_corch", 'yy.pushCorchState();']],
             "DIMID_E_CORCH_R": [["e_corch", 'yy.popCorchState();']],
-            "XP0": [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation()"]],
-            "XP0_": [["R_OP_T4 XP0", "$$ = $1 + $2;"], ["", "$$ = ``;"]],
+            /**/ "XP0": [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation();"]],
+            /**/ "XP0_": [["R_OP_T4 XP1 XP0_", "$$ = $2; console.log('first', $1, $2, yy.pileVals.peek());"], ["", "console.log('end');"]],
             "R_OP_T4": [["op_t4", "$$ = $1; yy.pushOp($1)"]],
             "XP1": [["XP2 XP1_", "yy.checkOperation('4')"]],
             "XP1_": [["R_OP_T3 XP1", "$$ = $1 + $2;"], ["", "$$ =``;"]],
@@ -734,7 +762,7 @@ var PROY_FINAL;
             "XP3_": [["R_OP_T1 XP3", "$$ = $1 + $2;"], ["", "$$ = ``"]],
             "R_XP4": [["XP4", "yy.checkOperation('1')"]],
             "R_OP_T1": [["op_t1", "$$ = $1; yy.pushOp($1)"]],
-            "XP4": [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = JSON.stringify($1); yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal($1); yy.pushType(yy.getVariableType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
+            "XP4": [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = $1; yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal($1); yy.pushType(yy.getVariableType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
             "XPP": [["XPP_S_PAR_R XP0 XPP_E_PAR_R", "$$ = $2"]],
             "XPP_S_PAR_R": [["s_par", 'yy.pushParthState();']],
             "XPP_E_PAR_R": [["e_par", 'yy.popParthState();']],
@@ -767,6 +795,9 @@ var PROY_FINAL;
      * Bitacora 5:
      * Terminada la producción de cuadruplos para estatutos no lineales. El desde v = n hasta r fue bastante demandante y se tuvo que agregar una pileVals
      * Falta hacer la validación de tipos y la administración de memoria
+     *
+     * Bitacora 6: Establecimiento de validación de tipos. OMG, esto es demasiado uwu
+     *
      */
     var p = new Parser(grammar);
     // Contexto interno
@@ -807,7 +838,7 @@ var PROY_FINAL;
                 a = 0;
             }
     `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[(1+2)-3],b,c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta = 1;\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12];\n\t\t\t{\n\t\t\t\tholas(1,2,3);\n\t\t\t\ta = 123;\n\t\t\t\tb = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a == b) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + ghg[4];\n\t\t\t\t\t}\n\t\t\t\t\ta = a * b;\n\t\t\t\t} sino {\n\t\t\t\t\tdesde g = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\tg = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\tb= 'E';\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal (){\n\t\t\t\ta = 0 + 5;\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[(1+2)-3],b,c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta = 1;\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12];\n\t\t\t{\n\t\t\t\tholas(1,2,3);\n\t\t\t\ta = 123;\n\t\t\t\tb = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a == b) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta = a * b;\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\tb= 123;\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q;\n\t\t\t{\n\t\t\t\ta = 0 + 5;\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq= 123;\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();
