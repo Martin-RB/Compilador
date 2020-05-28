@@ -6,20 +6,248 @@ import { Stack } from "./DataStruc/Stack";
 
 export namespace PROY_FINAL{
 
-	class Mem{
-		static memIdx = 0;
-		static request(){
-			this.memIdx += 1;
-			return this.memIdx;
+	class MemoryChunk{
+		private _integer: number = 0;
+		private _float: number = 0;
+		private _char: number = 0;
+		private _bool: number = 0;
+		private _sizePerSection: number;
+		private _initialOffset: number;
+
+		requestInteger(){
+			let num = this._integer;
+			this._integer++;
+			if(this._integer >= this._sizePerSection){
+				throw "Sobrecarga de memoria para enteros";
+			}
+			return this._initialOffset + num;
+		}
+		requestFloat(){
+			let num = this._float;
+			this._float++;
+			if(this._float >= this._sizePerSection){
+				throw "Sobrecarga de memoria para enteros";
+			}
+			return this._initialOffset + num + this._sizePerSection;
+		}
+		requestChar(){
+			let num = this._char;
+			this._char++;
+			if(this._char >= this._sizePerSection){
+				throw "Sobrecarga de memoria para enteros";
+			}
+			return this._initialOffset + num + this._sizePerSection * 2;
+		}
+		requestBool(){
+			let num = this._bool;
+			this._bool++;
+			if(this._bool >= this._sizePerSection){
+				throw "Sobrecarga de memoria para enteros";
+			}
+			return this._initialOffset + num + this._sizePerSection * 3;
+		}
+
+		getMemoryUsed(){
+			return this._integer + this._float + this._char + this._bool;
+		}
+
+		constructor(initialOffset: number, totalSize: number){
+			this._initialOffset = initialOffset;
+			this._sizePerSection = totalSize / 4;
 		}
 	}
 
-	interface vTableRow{
+	class Memory{
+
+		public static LOCAL_MEM = 0;
+		public static TEMP_MEM = 1;
+		public static GLOBAL_MEM = 2;
+
+		public static INTEGER = 10;
+		public static FLOAT = 11;
+		public static CHAR = 12;
+		public static BOOL = 13;
+
+		private _local: MemoryChunk;
+		private _temp: MemoryChunk;
+		private _father: Memory | null;
+		private _localSize: number;
+		private _tempSize: number;
+		private _initialOffset: number;
+
+		constructor(initialOffset: number, localSize: number, tempSize: number){
+
+			console.log("Initializing memory: ");
+			console.log("initialOFF: ", initialOffset);
+			console.log("localSize: ", localSize);
+			console.log("tempSize: ", tempSize);
+			console.log("Total size: ", localSize + tempSize);
+			console.log("LIMIT: ", initialOffset + localSize + tempSize);
+			
+
+			this._initialOffset = initialOffset;
+			this._localSize = localSize;
+			this._tempSize = tempSize;
+			this._local = new MemoryChunk(initialOffset, localSize);
+			this._temp = new MemoryChunk(initialOffset + localSize, tempSize);
+
+			this._father = null;
+		}
+
+		setFather(father: Memory){
+			this._father = father;
+		}
+
+		getFather(): Memory | null{
+			if(this._father)
+				return this._father;
+			else
+				return null;
+		}
+
+		getMemoryUsed(type: number){
+			switch (type) {
+				case Memory.TEMP_MEM:
+					return this._temp.getMemoryUsed();
+			}
+		}
+
+		requestMemory(location: number, type: number): number{
+			if(location == Memory.LOCAL_MEM){
+				return this.getFromTypeAndChunk(this._local, type);
+			}
+			else if(location == Memory.TEMP_MEM){
+				// + _localSize to set offset
+				return this.getFromTypeAndChunk(this._temp, type) + this._localSize;
+			}
+			else if(location == Memory.GLOBAL_MEM){
+				if(this._father != null){
+					return this._father.requestMemory(Memory.GLOBAL_MEM, type);
+				}
+				else{
+					return this.getFromTypeAndChunk(this._local, type);
+				}
+			}
+			else{
+				throw "UNRECOGNIZED MEMORY LOCATION REQUEST: " + location;
+				
+			}
+		}
+
+		private getFromTypeAndChunk(chunk: MemoryChunk, type: number){
+			switch (type) {
+				case Memory.INTEGER:
+					return chunk.requestInteger();
+				case Memory.FLOAT:
+					return chunk.requestFloat();
+				case Memory.CHAR:
+					return chunk.requestChar();
+				case Memory.BOOL:
+					return chunk.requestBool();
+				default:
+					throw "NOT DETECTED TYPE";
+			}
+		}
+
+		getNextFree(){
+			return this._initialOffset + this._localSize + this._tempSize;
+		}
+	}
+
+	// Constant's memory
+	class MortalKonstants{
+		private _constants: number;
+		private _max: number;
+		private _registered: HashMap<number>;
+		constructor(offset: number, size: number){
+			this._constants = offset;
+			this._max = size;
+			this._registered = new HashMap<number>();
+		}
+
+		request(constant: string){
+			let val = this._registered.get(constant);
+			if(!val){
+				this._registered.set(constant, this.getNewMemory());
+				val = this._registered.get(constant);
+			}
+			return val;
+		}
+
+		private getNewMemory(){
+			let num = this._constants;
+			this._constants++;
+			if(this._constants >= this._max){
+				throw "Sobrecarga de memoria para enteros";
+			}
+			return num;
+		}
+	}
+
+	interface IFuncTableRow{
+		id: string;
+		type: string;
+		value: string | undefined;
+		numLocalVars: number | undefined;
+		args: Array<IArg>;
+		ip: number | undefined;
+		numTempVars: number | undefined;
+		k: number;
+	}
+
+	interface IArg{
+		name: string;
+		type: string;
+	}
+
+	interface IVarTableRow{
 		name: string,
 		type: string,
 		scope: string,
 		dimSize: string,
-		dir: any | HashMap<any> | undefined
+		dir: any | HashMap<any> | undefined,
+	}
+
+	class VarTable extends HashMap<IVarTableRow>{
+		private _fatherTable : VarTable | null;
+
+		constructor(){
+			super();
+
+			this._fatherTable = null;
+		}
+
+		setFatherTable(fatherTable: VarTable){
+			this._fatherTable = fatherTable;
+		}
+
+		getFatherTable(): VarTable | null{
+			if(this._fatherTable)
+				return this._fatherTable;
+			else
+				return null;
+		}
+
+		get(key: string): IVarTableRow | undefined{
+			for (let i = 0; i < this._array.length; i++) {
+				const el = this._array[i];
+				
+				if(el.v1 == key){
+					return el.v2;
+				}
+			}
+			let father = this.getFatherTable();
+			if(father){
+				return father.get(key);
+			}
+			return undefined;
+		}
+	}
+
+	class FuncTable extends HashMap<IFuncTableRow>{
+		constructor(){
+			super();
+		}
 	}
 
 	interface DIMID{
@@ -32,7 +260,15 @@ export namespace PROY_FINAL{
 		squats: Array<Tuple<string, string, string, string>> = new Array<Tuple<string, string, string, string>>();
 		/*Nombre, tipo, scope, length, val*/
 		//varTable : HashMap<Tuple<string, string, string, string /**Puesto de manera auxiliar */, any | HashMap<any> | undefined>> = new HashMap<Tuple<string, string, string, string, any | HashMap<any> | undefined>>();
-		varTable = new HashMap<vTableRow>();
+		//varTable = new HashMap<vTableRow>();
+		varTable = new VarTable();
+		funcTable = new FuncTable();
+		memGVarSize = 4000;
+		memGTempSize = 8000;
+		memGConstSize = 5000;
+		constantsMemory = new MortalKonstants(0, this.memGConstSize);
+		actualMemory = new Memory(this.memGConstSize, this.memGVarSize, this.memGTempSize);
+		actualFunction:string|null = null;
 
 		qb : HashMap<HashMap<HashMap<string>>> = new HashMap<HashMap<HashMap<string>>>();
 
@@ -41,6 +277,7 @@ export namespace PROY_FINAL{
 		pileJump = new Stack<string>();
 		pileFromTo = new Stack<string>();
 		pileType = new Stack<string>();
+		pileFunc = new Stack<string>();
 		
 		// [["type", [["var1", "dimention"], [var2, dimention]], [type, []]]
 		addFromString = (array: Array<{t:string, vs: Array<{n:string, d:string}>}>, state: string) => {
@@ -94,6 +331,91 @@ export namespace PROY_FINAL{
 		setVariableDir = (name: string, idx?: string) => {
 
 		}
+
+		functionAddArgs = (args: Array<IArg>) => {
+			console.log("FFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+			
+			console.log(args);
+			
+			let actualID = this.pileFunc.pop();
+			if(!actualID) throw "ERROR: NO PROPER FUNCTION STABLISMENT";
+
+			let r = this.funcTable.get(actualID);
+			if(!r) throw "No se encontró la función especificada: " + actualID;
+			
+			console.log("ÑÑÑÑÑÑÑÑÑÑÑÑÑÑÑÑ", args);
+			
+			r.args = args;
+			for (let i = 0; i < r.args.length; i++) {
+				const arg = r.args[i];
+				let variable: IVarTableRow = {name: arg.name, dimSize: "1", 
+					dir: undefined, scope: "local", type: arg.type};
+				this.varTable.set(arg.name, variable);
+			}
+		}
+
+		functionProc = (id: string, type: string) =>{
+			
+			this.pileFunc.push(id);
+			this.actualFunction = id;
+			let r: IFuncTableRow = {id, args: [], type, 
+				ip:undefined, numLocalVars: undefined, 
+				numTempVars: undefined,value: undefined, k: 0};
+			this.funcTable.set(id, r);
+
+			console.log("DaFunc", this.funcTable.get(id));
+			
+
+			if(type != "void"){
+				let memory = 
+						this.actualMemory
+							.requestMemory(Memory.GLOBAL_MEM, this.toMemoryStringType(type));
+
+				this.varTable.set(id, {name: id, dimSize: "1", 
+					dir: memory, scope: "global", type: type});
+			}
+
+			let newVarTable = new VarTable();
+			newVarTable.setFatherTable(this.varTable);
+			this.varTable = newVarTable;
+
+			let offset = this.actualMemory.getNextFree();
+			let newMemory = new Memory(offset, this.memGVarSize/2, this.memGTempSize/2);
+			newMemory.setFather(this.actualMemory);
+			this.actualMemory = newMemory;
+			
+		}
+		setLocalVarNumber = ()=>{
+			if(!this.actualFunction) throw "NO FUNCTION";
+			let actualFunc = this.funcTable.get(this.actualFunction)!;
+			let declaredVars = this.varTable._array.length;
+			let argNumber = actualFunc.args.length;
+			this.funcTable.get(this.actualFunction)!.numLocalVars = 
+						declaredVars - argNumber;
+			
+			this.funcTable.get(this.actualFunction)!.ip = this.squats.length;
+			
+		}
+		endFuncProc = () => {
+			let used = this.actualMemory.getMemoryUsed(Memory.TEMP_MEM);
+			if(!this.actualFunction) throw "NO FUNCTION";
+			let actualFunc = this.funcTable.get(this.actualFunction)!;
+			actualFunc.numTempVars = used;
+
+			this.squats.push(new Tuple("ENDFUNCTION", "","",""));
+
+			let fatherMem = this.actualMemory.getFather();
+			if(fatherMem != null)
+				this.actualMemory = fatherMem;
+			else
+				throw "INNER: NO FATHER MEMORY";
+
+			let fatherVarTable = this.varTable.getFatherTable();
+			if(fatherVarTable != null)
+				this.varTable = fatherVarTable;
+			else
+				throw "INNER: NO FATHER VAR TABLE";
+		}
 /* 		getLastValue = () => {
 			return this.pileVals.pop();
 		} */
@@ -138,7 +460,7 @@ export namespace PROY_FINAL{
 			if(typeof value == "object"){
 				name = value.n;
 			}
-			else if(typeof value == "string"){
+			else{
 				name = value;
 			}
 
@@ -184,7 +506,7 @@ export namespace PROY_FINAL{
 			
 			console.log("Types:");this.pileType.print();
 			if(!vAssign){
-				let memSpace = "*" + Mem.request().toString();
+				let memSpace = "*" + this.actualMemory.requestMemory(Memory.TEMP_MEM, this.toMemoryStringType(typeResult))?.toString();
 				console.log(`ADDED QUAD: ${operator}, ${leftOnd}, ${rightOnd}, ${memSpace}`);
 				this.squats.push(new Tuple(operator, leftOnd!, rightOnd!, memSpace));
 				this.pileVals.push(memSpace);
@@ -197,6 +519,20 @@ export namespace PROY_FINAL{
 				console.log("\n\n\n\n\n\n");
 			}
 			
+		}
+		toMemoryStringType(type: string){
+			switch (type) {
+				case "int":
+					return Memory.INTEGER;
+				case "char":
+						return Memory.CHAR;
+				case "float":
+						return Memory.FLOAT;
+				case "bool":
+						return Memory.BOOL;
+				default:
+					throw "UNRECOGNIZED TYPE: " + type;
+			}
 		}
 		fromToComp = (v1:string, v2:string) => {
 			this.pushVal(v1);
@@ -226,6 +562,105 @@ export namespace PROY_FINAL{
 		fromToEndProc = () => {
 
 		}
+
+		callFunction_start = (id: string)=>{
+			if(!this.funcTable.exist(id)){
+				throw "Función " + id + " no declarada";
+			}
+			this.pileFunc.push(id);
+			this.funcTable.get(id)!.k = 0;
+			this.squats.push(new Tuple("ERA", "", "", id));
+		}
+		callFunction_pushParam = (dir: string, type: string)=>{
+			let id = this.pileFunc.peek();
+			if(!id){
+				throw "Llamada función sin nombre";
+			}
+
+			if(!this.funcTable.exist(id)){
+				throw "Función " + id + " no declarada";
+			}
+
+			let func = this.funcTable.get(id)!;
+			
+			let arg = func.args[func.k];
+			console.log(func.args, type);
+			
+
+			if(arg && arg.type == type){
+				this.squats.push(new Tuple("PARAM", dir, "_", func.k.toString()));
+			}
+			else{
+				throw "Incompatible type " + type + " on " + func.k + " parameter at function " + id;
+			}
+			
+			func.k++;
+			
+		}
+
+		callFunction_end = ()=>{
+			let id = this.pileFunc.peek();
+			if(!id){
+				throw "Llamada función sin nombre";
+			}
+
+			if(!this.funcTable.exist(id)){
+				throw "Función " + id + " no declarada";
+			}
+
+			let func = this.funcTable.get(id)!;
+
+			if(func.args.length != func.k){
+				throw `Numero incorrecto de parametros. Se pusieron ${func.k}, se esperaban ${func.args.length}.`;
+			}
+
+			this.squats.push(new Tuple("GOSUB","","",this.pileFunc.pop()));
+
+			return id;
+		}
+
+		getFuncSavedMemory = (id: string) => {
+			if(!this.funcTable.exist(id)){
+				throw "Función " + id + " no declarada";
+			}
+
+			let func = this.funcTable.get(id)!;
+			let mem = this.actualMemory.requestMemory(Memory.GLOBAL_MEM, this.getMemoryType(func.type));
+			this.squats.push(new Tuple("=", func.value!, "_", mem.toString()));
+			console.log("getFuncSavedMemory MEM: ", mem);
+			
+			return mem;
+		}
+
+		functionReturnProc = (value: string, type: string) => {
+			let id = this.pileFunc.peek();
+			if(!id) throw "No hay función a la cual asignar 'regresa'";
+			
+
+			let func = this.funcTable.get(id);
+			if(!func) throw `No hay función declarada llamada '${id}'`;
+
+			if(func.type == type) 
+				throw "Se ha regresado un tipo '${type}' en la función '${id}' de tipo '${func.type}'.";
+						
+			func.value = value;
+		}
+
+		getMemoryType(type: string){
+			switch (type) {
+				case "int":
+					return Memory.INTEGER;
+				case "bool":
+					return Memory.BOOL;
+				case "char":
+					return Memory.CHAR;
+				case "float":
+					return Memory.FLOAT;
+				default:
+					throw "NOT RECOGNIZED TYPE";
+			}
+		}
+		
 		addJumpT = (eValue: string, destiny?:boolean) =>{
 			let _dest = "_";
 			if(destiny){
@@ -286,12 +721,16 @@ export namespace PROY_FINAL{
 			this.resolveJump(parseInt(idxFix));
 		}
 		getVariableType = (name: any) => {
-			console.log(name);
-			
 			let variable = this.varTable.get(name);
 			if(!variable){ throw `Variable ${name} no existente`}
 
 			return variable.type;
+		}
+		getFunctionType = (name: string) => {
+			let func = this.funcTable.get(name);
+			if(!func){ throw `Función ${name} no existente`}
+
+			return func.type;
 		}
 		pushType = (type: string) => {
 			console.log("PUSHED type: " + type);
@@ -734,39 +1173,50 @@ export namespace PROY_FINAL{
 	
 		"bnf": {
 			"S"				: [["init_prgr id e_stmt SS", "yy.addVariableToTable($2, `void`, `global`, `1`);"]],
-			"SS"			: ["VG FD M"],
-			"M"				: ["main_f s_par e_par VG B"],
+			"SS"			: ["R_SS_VG R_SS_FD M"],
+			/**/"R_SS_VG"		: [["VG", "yy.addJump(false);"]],
+			/**/"R_SS_FD"		: [["FD", "yy.resolveJump();"]],
+			"M"				: ["R_M_mainf s_par e_par VG R_M_B"],
+			/**/"R_M_mainf"		: [["main_f", "yy.functionProc('main', 'void');"]],
+			/**/"R_M_B"			: [["B", "yy.endFuncProc();"]],
 			"B"				: ["s_bck ST e_bck"],
-			"VG"				: [["var_dec TD", 'yy.addFromString($2, yy.state); yy.state = `local`;'], ["", ""]],
+			/**/"VG"				: [["var_dec TD", 'yy.addFromString($2, yy.state);'], ["", ""]],
 			"TD"				: [["var_type definer TDL1 e_stmt TDR", "$$ = [{t:$1, vs:$3}].concat($5);"]],
 			"TDR"				: [["TD", "$$ = $1"], ["", "$$ = undefined"]],
 			"TDL1"				: [["DIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
 			"TDL2"				: [["separ DIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
-			"FD"				: [["FD_DEC_R VG B FD", ""], ["", ""]],
-			"FD_DEC_R"			: [["func FTYPE id s_par PDL1 e_par e_stmt", "yy.addVariableToTable($3, $2, `global`, `1`)"]],
-			"PDL1"				: ["var_type id PDL2", ""],
-			"PDL2"				: ["separ var_type id PDL2", ""],
+			"FD"				: [["FD_DEC_R R_FD_VG R_FD_B FD", ""], ["", ""]],
+			/**/"R_FD_VG"			: [["VG", "yy.setLocalVarNumber();"]],
+			/**/"FD_DEC_R"			: [["R_DEC_func s_par R_FD_PDL1 e_par e_stmt", "console.log('bbb', $3);yy.functionAddArgs($3);"]],
+			/**/"R_DEC_func"		: [["func FTYPE id", "yy.functionProc($3, $2);"]],
+			/**/"R_FD_PDL1"			: [["PDL1", "console.log('ARGS: ', $1);$$ = $1; console.log('ññññ', $1)"], ["", "console.log('EMPTY ARGS');$$ = [];"]],
+			/**/"R_FD_B"			: [["B", "yy.endFuncProc();"]],
+			"PDL1"				: [["R_PDL1_type PDL2", "$$ = [$1].concat($2);console.log('ddd', $$);"]],
+			/**/"R_PDL1_type"	: [["var_type id", "$$ = {name: $2, type: $1};"]],
+			"PDL2"				: [["separ R_PDL1_type PDL2", "$$ = [$2].concat($3)"], ["", "$$ = [];"]],
 			"ST"				: ["STDEF ST", ""],
 			/**/"STDEF"				: [["ASI e_stmt", "yy.pileType.pop();"], ["CALL e_stmt", ""], ["RET e_stmt", ""], ["REE e_stmt", ""], ["WRT e_stmt", ""], ["DEC", ""], ["REP", ""]],
-			"CALL"				: [["id s_par CALA e_par", "$$ = $1;"]],
-			"CALA"				: [["XP0 CALA2", "yy.pileType.pop(); console.log(`ñññ`); console.log('Types:');yy.pileType.print();"], ["", ""]],
-			"CALA2"				: [["separ XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
+			"CALL"				: [["R_CALL_ID s_par CALA e_par", "$$ = yy.callFunction_end();"]],
+			/**/"R_CALL_ID"		: [["id", "yy.callFunction_start($1);"]],
+			"CALA"				: [["R_CALA_XP0 CALA2", "yy.pileType.pop(); console.log('Types:');yy.pileType.print();"], ["", ""]],
+			"CALA2"				: [["separ R_CALA_XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
+			/**/"R_CALA_XP0"	: [["XP0", "yy.callFunction_pushParam($1, yy.pileType.pop());"]],
 			"ASI"				: [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop();"]],
 			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal($1); console.log("rrr"); yy.pushType(yy.getVariableType($1.n));']],
 			"ASI_EQ_R"			: [["eq", 'yy.pushOp($1)']],
 			/**/"ASI_"				: [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
-			"RET"				: ["ret s_par XP0 e_par"],
+			"RET"				: [["ret s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop());"]],
 			"REE"				: ["read s_par DIMID REE_ e_par"],
 			"REE_"				: ["separ DIMID REE_", ""],
 			"WRT"				: ["write s_par WL e_par"],
 			"WL"				: ["W_C WL1"],
 			"WL1"				: ["separ W_C WL1", ""],
 			"W_C"				: ["STR", "XP0"],
-			"DEC"				: [["if s_par DEC_XP0_R e_par then DEC_B_R ELSE", 'yy.resolveJump()']],
+			"DEC"				: [["if s_par DEC_XP0_R e_par then B ELSE", 'yy.resolveJump()']],
 			/**/"DEC_XP0_R"			: [["XP0", "yy.decisionCheck(); yy.addJumpF($1);"]],
-			"DEC_B_R"			: [["B", '']],
-			"ELSE"				: ["ELSE_ELSE_R ELSE_B_R", ""],
-			"ELSE_B_R"			: [["B", '']],
+			/*--*/"DEC_B_R"			: [["B", '']],
+			"ELSE"				: ["ELSE_ELSE_R B", ""],
+			/*--*/"ELSE_B_R"			: [["B", '']],
 			"ELSE_ELSE_R"		: [["else", 'yy.elseIntersectionProc()']],
 			"REP"				: ["COND", "NCOND"],
 			"COND"				: ["COND_WHILE_R s_par COND_XP0_R e_par do COND_B_R"],
@@ -792,7 +1242,7 @@ export namespace PROY_FINAL{
 			"XP3_"				: [["R_OP_T1 XP3", "$$ = $1 + $2;"], ["", "$$ = ``"]],
 			"R_XP4"				: [["XP4", "yy.checkOperation('1')"]],
 			"R_OP_T1"			: [["op_t1", "$$ = $1; yy.pushOp($1)"]],
-			"XP4"				: [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = $1; yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal($1); yy.pushType(yy.getVariableType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
+			"XP4"				: [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = $1; yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal(yy.getFuncSavedMemory($1)); yy.pushType(yy.getFunctionType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
 			"XPP"				: [["XPP_S_PAR_R XP0 XPP_E_PAR_R", "$$ = $2"]],
 			"XPP_S_PAR_R"		: [["s_par", 'yy.pushParthState();']],
 			"XPP_E_PAR_R"		: [["e_par", 'yy.popParthState();']],
@@ -830,6 +1280,15 @@ export namespace PROY_FINAL{
 	 * 
 	 * Bitacora 6: Establecimiento de validación de tipos. OMG, esto es demasiado uwu
 	 * 
+	 * Bitacora 7: Funciones ahora si funcionan chido
+	 * Fuie muy largo agregar toda la funcionalidad diseñada para las funciones pero funcionan\
+	 * El diseño tambien abrió muchas dudas que se resolvieron en el mismo.
+	 * El codigo extrañamente funciona bien con la implementación de las funciones
+	 * Tambien se agregó la funcionalidad de la memoria y sus espacios
+	 * También fue largo de implementar, especialmente porque es algo complejo
+	 * La memoria hace bien su trabajo. El sistema de padres establecido funciona de maravilla
+	 * *Falta agregar memoria por valor y variables
+	 * *Falta agregar la orden de operacion RETURN
 	 */
 
 	var p = new Parser(grammar);
@@ -873,18 +1332,18 @@ export namespace PROY_FINAL{
 	`.replace("\t", ""))); */
 	console.log(p.parse(`
 			programa XD; 
-			var int: a[(1+2)-3],b,c; float: r;
+			var int: a[(1+2)-3],b[1+1],c; float: r;
 			%% AASDASD
 			
 			funcion bool getAll();
 			{
-				a = 1;
+				a[1] = 1;
 			}
 
 			funcion int holas(int X, float y, char a123123);
-				var char: x,y,z[12];
+				var char: x,y,z[12+1];
 			{
-				holas(1,2,3);
+				holas(1,2.5,'c');
 				a = 123;
 				b = 2;
 				c = 123 - 1;
@@ -907,6 +1366,8 @@ export namespace PROY_FINAL{
 			var float:hg,q;
 			{
 				a = 0 + 5;
+
+				holas(49,-2.25, 'a');
 
 				desde hg = 5 hasta 41 hacer
 				{
