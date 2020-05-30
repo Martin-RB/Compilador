@@ -25,6 +25,7 @@ var PROY_FINAL;
             this._float = 0;
             this._char = 0;
             this._bool = 0;
+            this._void = 0;
             this._initialOffset = initialOffset;
             this._sizePerSection = totalSize / 4;
         }
@@ -32,7 +33,7 @@ var PROY_FINAL;
             var num = this._integer;
             this._integer++;
             if (this._integer >= this._sizePerSection) {
-                throw "Sobrecarga de memoria para enteros";
+                throw "Error: Sobrecarga de memoria para enteros";
             }
             return this._initialOffset + num;
         };
@@ -40,7 +41,7 @@ var PROY_FINAL;
             var num = this._float;
             this._float++;
             if (this._float >= this._sizePerSection) {
-                throw "Sobrecarga de memoria para enteros";
+                throw "Error: Sobrecarga de memoria para flotantes";
             }
             return this._initialOffset + num + this._sizePerSection;
         };
@@ -48,7 +49,7 @@ var PROY_FINAL;
             var num = this._char;
             this._char++;
             if (this._char >= this._sizePerSection) {
-                throw "Sobrecarga de memoria para enteros";
+                throw "Error: Sobrecarga de memoria para caracteres";
             }
             return this._initialOffset + num + this._sizePerSection * 2;
         };
@@ -56,9 +57,17 @@ var PROY_FINAL;
             var num = this._bool;
             this._bool++;
             if (this._bool >= this._sizePerSection) {
-                throw "Sobrecarga de memoria para enteros";
+                throw "Error: Sobrecarga de memoria para boleanos";
             }
             return this._initialOffset + num + this._sizePerSection * 3;
+        };
+        MemoryChunk.prototype.requestVoid = function () {
+            var num = this._void;
+            this._void++;
+            if (this._void >= this._sizePerSection) {
+                throw "Error: Sobrecarga de memoria para void";
+            }
+            return this._initialOffset + num + this._sizePerSection * 4;
         };
         MemoryChunk.prototype.getMemoryUsed = function () {
             return this._integer + this._float + this._char + this._bool;
@@ -97,18 +106,18 @@ var PROY_FINAL;
         };
         Memory.prototype.requestMemory = function (location, type) {
             if (location == Memory.LOCAL_MEM) {
-                return this.getFromTypeAndChunk(this._local, type);
+                return "*" + this.getFromTypeAndChunk(this._local, type);
             }
             else if (location == Memory.TEMP_MEM) {
                 // + _localSize to set offset
-                return this.getFromTypeAndChunk(this._temp, type) + this._localSize;
+                return "*" + (this.getFromTypeAndChunk(this._temp, type) + this._localSize);
             }
             else if (location == Memory.GLOBAL_MEM) {
                 if (this._father != null) {
                     return this._father.requestMemory(Memory.GLOBAL_MEM, type);
                 }
                 else {
-                    return this.getFromTypeAndChunk(this._local, type);
+                    return "*" + this.getFromTypeAndChunk(this._local, type);
                 }
             }
             else {
@@ -125,6 +134,8 @@ var PROY_FINAL;
                     return chunk.requestChar();
                 case Memory.BOOL:
                     return chunk.requestBool();
+                case Memory.VOID:
+                    return chunk.requestVoid();
                 default:
                     throw "NOT DETECTED TYPE";
             }
@@ -139,6 +150,7 @@ var PROY_FINAL;
         Memory.FLOAT = 11;
         Memory.CHAR = 12;
         Memory.BOOL = 13;
+        Memory.VOID = 14;
         return Memory;
     }());
     // Constant's memory
@@ -154,7 +166,7 @@ var PROY_FINAL;
                 this._registered.set(constant, this.getNewMemory());
                 val = this._registered.get(constant);
             }
-            return val;
+            return "*" + val;
         };
         MortalKonstants.prototype.getNewMemory = function () {
             var num = this._constants;
@@ -195,6 +207,19 @@ var PROY_FINAL;
             }
             return undefined;
         };
+        VarTable.prototype.exist = function (key) {
+            for (var i = 0; i < this._array.length; i++) {
+                var el = this._array[i];
+                if (el.v1 == key) {
+                    return true;
+                }
+            }
+            var father = this.getFatherTable();
+            if (father) {
+                return father.exist(key);
+            }
+            return false;
+        };
         return VarTable;
     }(HashMap_1.HashMap));
     var FuncTable = /** @class */ (function (_super) {
@@ -214,8 +239,8 @@ var PROY_FINAL;
             //varTable = new HashMap<vTableRow>();
             this.varTable = new VarTable();
             this.funcTable = new FuncTable();
-            this.memGVarSize = 4000;
-            this.memGTempSize = 8000;
+            this.memGVarSize = 5000;
+            this.memGTempSize = 10000;
             this.memGConstSize = 5000;
             this.constantsMemory = new MortalKonstants(0, this.memGConstSize);
             this.actualMemory = new Memory(this.memGConstSize, this.memGVarSize, this.memGTempSize);
@@ -268,8 +293,8 @@ var PROY_FINAL;
             };
             this.addVariableToTable = function (name, type, scope, dimSize) {
                 if (!dimSize)
-                    dimSize = "1";
-                _this.varTable.set(name, { name: name, type: type, scope: scope, dimSize: dimSize, dir: undefined });
+                    dimSize = undefined;
+                _this.varTable.set(name, { name: name, type: type, scope: scope, dimSize: dimSize, dir: _this.actualMemory.requestMemory(Memory.LOCAL_MEM, _this.getMemoryType(type)) });
             };
             this.addVariablesToTable = function (names, type, scope, dimSizes) {
                 for (var i = 0; i < names.length; i++) {
@@ -308,7 +333,7 @@ var PROY_FINAL;
                 console.log("DaFunc", _this.funcTable.get(id));
                 if (type != "void") {
                     var memory = _this.actualMemory
-                        .requestMemory(Memory.GLOBAL_MEM, _this.toMemoryStringType(type));
+                        .requestMemory(Memory.GLOBAL_MEM, _this.getMemoryType(type));
                     _this.varTable.set(id, { name: id, dimSize: "1",
                         dir: memory, scope: "global", type: type });
                 }
@@ -396,6 +421,45 @@ var PROY_FINAL;
                 console.log("PUSHED", name);
                 _this.pileVals.push(name);
             };
+            this.getKnstSavedMemory = function (konstant) {
+                return _this.constantsMemory.request(konstant);
+            };
+            this.getVarSavedMemory = function (id, dim) {
+                if (!_this.varTable.exist(id)) {
+                    throw "Error: Variable " + id + " no declarada";
+                }
+                var varr = _this.varTable.get(id);
+                console.log("Variable to work: ", varr);
+                var dir = varr.dir;
+                if (varr.dimSize != undefined) {
+                    if (dim == undefined)
+                        throw "Error: Debes especificar la dimension de la variable " + varr.name;
+                    var typeDim = _this.pileType.pop();
+                    if (!typeDim || (typeDim != "int" && typeDim != "float"))
+                        throw "Error: Valor de dimensión no es entero o flotante";
+                    _this.squats.push(new Tuple_1.Tuple("VERFY", dim, _this.constantsMemory.request("0"), varr.dimSize));
+                    _this.pushType("int");
+                    _this.pushVal(dir);
+                    _this.pushType(typeDim);
+                    _this.pushVal(dim);
+                    _this.pushOp("+");
+                    _this.checkOperation("2");
+                    var type = _this.pileType.pop();
+                    if (!(type == "int" || type == "float"))
+                        throw "Error: Valor de dimensión no es entero o flotante";
+                    dir = _this.pileVals.pop();
+                }
+                return dir;
+            };
+            this.getFuncSavedMemory = function (id) {
+                if (!_this.funcTable.exist(id)) {
+                    throw "Error: Función " + id + " no declarada";
+                }
+                var func = _this.funcTable.get(id);
+                var mem = _this.actualMemory.requestMemory(Memory.GLOBAL_MEM, _this.getMemoryType(func.type));
+                _this.squats.push(new Tuple_1.Tuple("=", func.value, "_", mem.toString()));
+                return mem;
+            };
             this.endOperation = function () {
                 console.log("ENDED:");
                 console.log("---");
@@ -476,16 +540,6 @@ var PROY_FINAL;
                 }
                 _this.squats.push(new Tuple_1.Tuple("GOSUB", "", "", _this.pileFunc.pop()));
                 return id;
-            };
-            this.getFuncSavedMemory = function (id) {
-                if (!_this.funcTable.exist(id)) {
-                    throw "Función " + id + " no declarada";
-                }
-                var func = _this.funcTable.get(id);
-                var mem = _this.actualMemory.requestMemory(Memory.GLOBAL_MEM, _this.getMemoryType(func.type));
-                _this.squats.push(new Tuple_1.Tuple("=", func.value, "_", mem.toString()));
-                console.log("getFuncSavedMemory MEM: ", mem);
-                return mem;
             };
             this.functionReturnProc = function (value, type) {
                 var id = _this.pileFunc.peek();
@@ -583,12 +637,6 @@ var PROY_FINAL;
                 var t = _this.pileType.pop();
                 if (t != "bool") {
                     throw "Tipo " + t + " no esperado. Se esperaba 'bool'";
-                }
-            };
-            this.dimidTypeCheck = function () {
-                var t = _this.pileType.pop();
-                if (t != "int") {
-                    throw "Tipo " + t + " no esperado. Se esperaba 'int'";
                 }
             };
             this.printQuads = function () {
@@ -960,6 +1008,7 @@ var PROY_FINAL;
             var operator = op;
             var rightOnd = this.pileVals.pop();
             var leftOnd = this.pileVals.pop();
+            console.log("Onds: ", leftOnd, rightOnd);
             if (!rightOnd || !leftOnd)
                 throw "Error de valores: Cantidad de valores incorrecta";
             console.log(JSON.stringify(this.pileType.peek()));
@@ -975,7 +1024,7 @@ var PROY_FINAL;
             console.log("Types:");
             this.pileType.print();
             if (!vAssign) {
-                var memSpace = "*" + ((_c = this.actualMemory.requestMemory(Memory.TEMP_MEM, this.toMemoryStringType(typeResult))) === null || _c === void 0 ? void 0 : _c.toString());
+                var memSpace = (_c = this.actualMemory.requestMemory(Memory.TEMP_MEM, this.getMemoryType(typeResult))) === null || _c === void 0 ? void 0 : _c.toString();
                 console.log("ADDED QUAD: " + operator + ", " + leftOnd + ", " + rightOnd + ", " + memSpace);
                 this.squats.push(new Tuple_1.Tuple(operator, leftOnd, rightOnd, memSpace));
                 this.pileVals.push(memSpace);
@@ -988,20 +1037,6 @@ var PROY_FINAL;
                 console.log("\n\n\n\n\n\n");
             }
         };
-        YYKontext.prototype.toMemoryStringType = function (type) {
-            switch (type) {
-                case "int":
-                    return Memory.INTEGER;
-                case "char":
-                    return Memory.CHAR;
-                case "float":
-                    return Memory.FLOAT;
-                case "bool":
-                    return Memory.BOOL;
-                default:
-                    throw "UNRECOGNIZED TYPE: " + type;
-            }
-        };
         YYKontext.prototype.getMemoryType = function (type) {
             switch (type) {
                 case "int":
@@ -1012,8 +1047,10 @@ var PROY_FINAL;
                     return Memory.CHAR;
                 case "float":
                     return Memory.FLOAT;
+                case "void":
+                    return Memory.VOID;
                 default:
-                    throw "NOT RECOGNIZED TYPE";
+                    throw "NOT RECOGNIZED TYPE" + type;
             }
         };
         return YYKontext;
@@ -1118,8 +1155,8 @@ var PROY_FINAL;
             /**/ "COND_B_R": [["B", "yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true);"]],
             "NCOND": [["from NCOND_P1_R dof B", "yy.fromToSum(yy.pileFromTo.pop()); yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true)"]],
             /**/ "NCOND_P1_R": [["ASI to XP0", "yy.pileFromTo.push($1); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop())"]],
-            "DIMID": [["id DIMID_", '$$ = {n:$1, d:$2}; console.log("DIMID", $$)']],
-            /**/ "DIMID_": [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; yy.dimidTypeCheck(); console.log("DIMID_", $$)'], ["", '']],
+            "DIMID": [["id DIMID_", '$$ = {n:$1, d:$2};']],
+            /**/ "DIMID_": [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2;'], ["", '']],
             "DIMID_S_CORCH_R": [["s_corch", 'yy.pushCorchState();']],
             "DIMID_E_CORCH_R": [["e_corch", 'yy.popCorchState();']],
             /**/ "XP0": [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation();"]],
@@ -1135,7 +1172,7 @@ var PROY_FINAL;
             "XP3_": [["R_OP_T1 XP3", "$$ = $1 + $2;"], ["", "$$ = ``"]],
             "R_XP4": [["XP4", "yy.checkOperation('1')"]],
             "R_OP_T1": [["op_t1", "$$ = $1; yy.pushOp($1)"]],
-            "XP4": [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = $1; yy.pushVal($$); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal(yy.getFuncSavedMemory($1)); yy.pushType(yy.getFunctionType($1));"], ["char", "$$ = $1; yy.pushVal($1); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal($1); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal($1); yy.pushType(`float`);"]],
+            "XP4": [["XPP", "$$ = $1; yy.pushVal($1);"], ["DIMID", "$$ = $1; console.log($$); yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n))"], ["CALL", "$$ = $1; yy.pushVal(yy.getFuncSavedMemory($1)); yy.pushType(yy.getFunctionType($1));"], ["char", "$$ = $1; yy.pushVal(yy.getKnstSavedMemory($1)); yy.pushType(`char`);"], ["INTEGER", "$$ = $1; yy.pushVal(yy.getKnstSavedMemory($1)); yy.pushType(`int`);"], ["FLOAT", "$$ = $1;yy.pushVal(yy.getKnstSavedMemory($1)); yy.pushType(`float`);"]],
             "XPP": [["XPP_S_PAR_R XP0 XPP_E_PAR_R", "$$ = $2"]],
             "XPP_S_PAR_R": [["s_par", 'yy.pushParthState();']],
             "XPP_E_PAR_R": [["e_par", 'yy.popParthState();']],
@@ -1178,8 +1215,10 @@ var PROY_FINAL;
      * Tambien se agregó la funcionalidad de la memoria y sus espacios
      * También fue largo de implementar, especialmente porque es algo complejo
      * La memoria hace bien su trabajo. El sistema de padres establecido funciona de maravilla
-     * Falta agregar memoria por valor y variables
-     * Falta agregar la orden de operacion RETURN
+     * *Falta agregar memoria por valor y variables
+     * *Falta agregar la orden de operacion RETURN
+     * Se ha logrado colocar los quads pero con memoria de constantes y temporales
+     *
      */
     var p = new Parser(grammar);
     // Contexto interno
@@ -1220,7 +1259,7 @@ var PROY_FINAL;
                 a = 0;
             }
     `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[(1+2)-3],b[1+1],c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta[1] = 1;\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12+1];\n\t\t\t{\n\t\t\t\tholas(1,2.5,'c');\n\t\t\t\ta = 123;\n\t\t\t\tb = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a == b) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta = a * b;\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\tb= 123;\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q;\n\t\t\t{\n\t\t\t\ta = 0 + 5;\n\n\t\t\t\tholas(49,-2.25, 'a');\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq= 123;\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[(1+2)-3],b[1+1],c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta[1] = 1;\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12+1];\n\t\t\t{\n\t\t\t\tholas(1,2.5,'c');\n\t\t\t\ta[4] = 123;\n\t\t\t\tb[1] = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a[4] == b[4]) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta[4] = a[3] * b[4];\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta[1] = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\ta[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;\n\t\t\t\t\tb[0+0]= 123;\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q;\n\t\t\t{\n\t\t\t\ta = 0 + 5;\n\n\t\t\t\tholas(49,-2.25, 'a');\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq= 123;\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();
