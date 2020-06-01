@@ -5,7 +5,7 @@ export class KapussinoVirtualMachine{
     
     private _quads : Array<Tuple<string, string, string, string>>;
     private _funcTable: FuncTable;
-    private _
+    
 
     constructor(quads: Array<Tuple<string, string, string, string>>, funcTable: FuncTable){
         this._quads = quads;
