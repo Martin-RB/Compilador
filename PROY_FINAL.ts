@@ -1372,17 +1372,18 @@ export namespace PROY_FINAL{
 	 * 
 	 * Bitacora 6: Establecimiento de validación de tipos. OMG, esto es demasiado uwu
 	 * 
-	 * Bitacora 7: Funciones ahora si funcionan chido
+	 * Bitacora 7: Funciones ahora si funcionan
 	 * Fuie muy largo agregar toda la funcionalidad diseñada para las funciones pero funcionan\
 	 * El diseño tambien abrió muchas dudas que se resolvieron en el mismo.
 	 * El codigo extrañamente funciona bien con la implementación de las funciones
 	 * Tambien se agregó la funcionalidad de la memoria y sus espacios
 	 * También fue largo de implementar, especialmente porque es algo complejo
 	 * La memoria hace bien su trabajo. El sistema de padres establecido funciona de maravilla
-	 * *Falta agregar memoria por valor y variables
-	 * *Falta agregar la orden de operacion RETURN
 	 * Se ha logrado colocar los quads pero con memoria de constantes y temporales
-	 * 
+	 * Se ha logrado colocar los quads con memoria para funciones y variables de todo tipo
+	 * Ya funcionan los estatutos lee, escribe
+	 * Ya funciona el return y se asigna a la funcion correspondiente 
+	 * Se comenzará a hacer la VM
 	 */
 
 	var p = new Parser(grammar);
