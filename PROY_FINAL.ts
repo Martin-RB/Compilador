@@ -1,6 +1,7 @@
 import { HashMap } from "./DataStruc/HashMap";
 import { Tuple } from "./DataStruc/Tuple";
 import { Stack } from "./DataStruc/Stack";
+import { FuncTable, IFuncTableRow, IArg } from "./classes/FuncTable";
 
 // COlumnas: Nombre, tipo, scope, valor(es), length
 
@@ -196,28 +197,12 @@ export namespace PROY_FINAL{
 		}
 	}
 
-	interface IFuncTableRow{
-		id: string;
-		type: string;
-		value: string | undefined;
-		numLocalVars: number | undefined;
-		args: Array<IArg>;
-		ip: number | undefined;
-		numTempVars: number | undefined;
-		k: number;
-	}
-
-	interface IArg{
-		name: string;
-		type: string;
-	}
-
 	interface IVarTableRow{
 		name: string,
 		type: string,
 		scope: string,
 		dimSize: string | undefined,
-		dir: any | HashMap<any> | undefined,
+		dims: HashMap<string>
 	}
 
 	class VarTable extends HashMap<IVarTableRow>{
@@ -271,11 +256,6 @@ export namespace PROY_FINAL{
 		}
 	}
 
-	class FuncTable extends HashMap<IFuncTableRow>{
-		constructor(){
-			super();
-		}
-	}
 
 	interface DIMID{
 		n: string;
@@ -346,38 +326,35 @@ export namespace PROY_FINAL{
 		}
 		addVariableToTable = (name: string, type: string, scope: string, dimSize: string | undefined) => {
 			if(!dimSize) dimSize = undefined;
-			this.varTable.set(name, {name, type, scope, dimSize, dir: this.actualMemory.requestMemory(Memory.LOCAL_MEM, this.getMemoryType(type))});
+			let dims = new HashMap<string>();
+			dims.set("0", this.actualMemory.requestMemory(Memory.LOCAL_MEM, this.getMemoryType(type)));
+			this.varTable.set(name, {name, type, scope, dimSize, dims });
 		}
-		addVariablesToTable = (names: string[], type: string, scope: string, dimSizes: Array<string>) => {
+/* 		addVariablesToTable = (names: string[], type: string, scope: string, dimSizes: Array<string>) => {
 			for (let i = 0; i < names.length; i++) {
 				const name = names[i];
 				const dimSize = dimSizes[i];
 
 				this.varTable.set(name, {name, type, scope, dimSize, dir: undefined});
 			}
-		}
+		} */
 		setVariableDir = (name: string, idx?: string) => {
 
 		}
 
 		functionAddArgs = (args: Array<IArg>) => {
-			console.log("FFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-			
-			console.log(args);
 			
 			let actualID = this.pileFunc.peek();
-			if(!actualID) throw "ERROR: NO PROPER FUNCTION STABLISMENT";
+			if(!actualID) throw "Error: Función no propiamente establecida";
 
 			let r = this.funcTable.get(actualID);
 			if(!r) throw "No se encontró la función especificada: " + actualID;
-			
-			console.log("ÑÑÑÑÑÑÑÑÑÑÑÑÑÑÑÑ", args);
 			
 			r.args = args;
 			for (let i = 0; i < r.args.length; i++) {
 				const arg = r.args[i];
 				let variable: IVarTableRow = {name: arg.name, dimSize: "1", 
-					dir: undefined, scope: "local", type: arg.type};
+					dims: new HashMap<string>(), scope: "local", type: arg.type};
 				this.varTable.set(arg.name, variable);
 			}
 		}
@@ -400,8 +377,10 @@ export namespace PROY_FINAL{
 						this.actualMemory
 							.requestMemory(Memory.GLOBAL_MEM, this.getMemoryType(type));
 
+				let dims = new HashMap<string>();
+				dims.set("0", memory);
 				this.varTable.set(id, {name: id, dimSize: "1", 
-					dir: memory, scope: "global", type: type});
+				dims, scope: "global", type: type});
 			}
 
 			let newVarTable = new VarTable();
@@ -513,28 +492,31 @@ export namespace PROY_FINAL{
 
 			let varr = this.varTable.get(id)!;
 			console.log("Variable to work: ", varr);
-			
-			let dir = varr.dir;
-			if(varr.dimSize != undefined){
-				if(dim == undefined) throw "Error: Debes especificar la dimension de la variable " + varr.name;
-				let typeDim = this.pileType.pop();
-				if(!typeDim || (typeDim != "int" && typeDim != "float")) throw "Error: Valor de dimensión no es entero o flotante";
+			let dir = varr.dims.get("0");
 
-				this.squats.push(new Tuple("VERFY", dim, this.constantsMemory.request("0"), varr.dimSize));
-				console.log("PUSHED VERIFY");
-				
-				this.pushType("int");
-				this.pushVal(dir);
-				this.pushType(typeDim);
-				this.pushVal(dim);
-				this.pushOp("+");
-				this.checkOperation("2");
-				let type = this.pileType.pop();
-				if(!(type == "int" || type == "float")) throw "Error: Valor de dimensión no es entero o flotante";
-				
-				dir = this.pileVals.pop();
+			if(varr.dimSize == undefined){
+				dim = "0";
 			}
-			return dir;
+			else{
+				if(dim == undefined) throw "Error: Debes especificar la dimension de la variable " + varr.name;
+			}
+
+			let typeDim = this.pileType.pop();
+			if(!typeDim || (typeDim != "int" && typeDim != "float")) throw "Error: Valor de dimensión no es entero o flotante";
+
+			this.squats.push(new Tuple("VERFY", dim, this.constantsMemory.request("0"), varr.dimSize));
+			
+			dir = varr.dims.get(dim);
+			this.pushType("int");
+			this.pushVal(dir);
+			this.pushType("int");
+			this.pushVal("0");
+			this.pushOp("+");
+			this.checkOperation("2");
+			let type = this.pileType.pop();
+			if(!(type == "int" || type == "float")) throw "Error: Valor de dimensión no es entero o flotante";
+			
+			dir = this.pileVals.pop();
 		}
 
 		functionReturn = (val: string) => {
@@ -1293,7 +1275,7 @@ export namespace PROY_FINAL{
 			"CALA2"				: [["separ R_CALA_XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
 			/**/"R_CALA_XP0"	: [["XP0", "yy.callFunction_pushParam($1, yy.pileType.pop());"]],
 			"ASI"				: [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop();"]],
-			"ASI_DIMID_R"		: [["DIMID", 'console.log("asdasd", $1);  yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n));']],
+			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n));']],
 			"ASI_EQ_R"			: [["eq", 'yy.pushOp($1)']],
 			/**/"ASI_"				: [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
 			"RET"				: [["ret s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`))"]],

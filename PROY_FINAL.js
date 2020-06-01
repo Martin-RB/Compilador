@@ -16,6 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var HashMap_1 = require("./DataStruc/HashMap");
 var Tuple_1 = require("./DataStruc/Tuple");
 var Stack_1 = require("./DataStruc/Stack");
+var FuncTable_1 = require("./classes/FuncTable");
 // COlumnas: Nombre, tipo, scope, valor(es), length
 var PROY_FINAL;
 (function (PROY_FINAL) {
@@ -222,13 +223,6 @@ var PROY_FINAL;
         };
         return VarTable;
     }(HashMap_1.HashMap));
-    var FuncTable = /** @class */ (function (_super) {
-        __extends(FuncTable, _super);
-        function FuncTable() {
-            return _super.call(this) || this;
-        }
-        return FuncTable;
-    }(HashMap_1.HashMap));
     var YYKontext = /** @class */ (function () {
         function YYKontext() {
             var _this = this;
@@ -238,7 +232,7 @@ var PROY_FINAL;
             //varTable : HashMap<Tuple<string, string, string, string /**Puesto de manera auxiliar */, any | HashMap<any> | undefined>> = new HashMap<Tuple<string, string, string, string, any | HashMap<any> | undefined>>();
             //varTable = new HashMap<vTableRow>();
             this.varTable = new VarTable();
-            this.funcTable = new FuncTable();
+            this.funcTable = new FuncTable_1.FuncTable();
             this.memGVarSize = 5000;
             this.memGTempSize = 10000;
             this.memGConstSize = 5000;
@@ -295,32 +289,32 @@ var PROY_FINAL;
             this.addVariableToTable = function (name, type, scope, dimSize) {
                 if (!dimSize)
                     dimSize = undefined;
-                _this.varTable.set(name, { name: name, type: type, scope: scope, dimSize: dimSize, dir: _this.actualMemory.requestMemory(Memory.LOCAL_MEM, _this.getMemoryType(type)) });
+                var dims = new HashMap_1.HashMap();
+                dims.set("0", _this.actualMemory.requestMemory(Memory.LOCAL_MEM, _this.getMemoryType(type)));
+                _this.varTable.set(name, { name: name, type: type, scope: scope, dimSize: dimSize, dims: dims });
             };
-            this.addVariablesToTable = function (names, type, scope, dimSizes) {
-                for (var i = 0; i < names.length; i++) {
-                    var name_1 = names[i];
-                    var dimSize = dimSizes[i];
-                    _this.varTable.set(name_1, { name: name_1, type: type, scope: scope, dimSize: dimSize, dir: undefined });
-                }
-            };
+            /* 		addVariablesToTable = (names: string[], type: string, scope: string, dimSizes: Array<string>) => {
+                        for (let i = 0; i < names.length; i++) {
+                            const name = names[i];
+                            const dimSize = dimSizes[i];
+            
+                            this.varTable.set(name, {name, type, scope, dimSize, dir: undefined});
+                        }
+                    } */
             this.setVariableDir = function (name, idx) {
             };
             this.functionAddArgs = function (args) {
-                console.log("FFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-                console.log(args);
                 var actualID = _this.pileFunc.peek();
                 if (!actualID)
-                    throw "ERROR: NO PROPER FUNCTION STABLISMENT";
+                    throw "Error: Función no propiamente establecida";
                 var r = _this.funcTable.get(actualID);
                 if (!r)
                     throw "No se encontró la función especificada: " + actualID;
-                console.log("ÑÑÑÑÑÑÑÑÑÑÑÑÑÑÑÑ", args);
                 r.args = args;
                 for (var i = 0; i < r.args.length; i++) {
                     var arg = r.args[i];
                     var variable = { name: arg.name, dimSize: "1",
-                        dir: undefined, scope: "local", type: arg.type };
+                        dims: new HashMap_1.HashMap(), scope: "local", type: arg.type };
                     _this.varTable.set(arg.name, variable);
                 }
             };
@@ -336,8 +330,10 @@ var PROY_FINAL;
                 if (type != "void") {
                     var memory = _this.actualMemory
                         .requestMemory(Memory.GLOBAL_MEM, _this.getMemoryType(type));
+                    var dims = new HashMap_1.HashMap();
+                    dims.set("0", memory);
                     _this.varTable.set(id, { name: id, dimSize: "1",
-                        dir: memory, scope: "global", type: type });
+                        dims: dims, scope: "global", type: type });
                 }
                 var newVarTable = new VarTable();
                 newVarTable.setFatherTable(_this.varTable);
@@ -434,27 +430,29 @@ var PROY_FINAL;
                 }
                 var varr = _this.varTable.get(id);
                 console.log("Variable to work: ", varr);
-                var dir = varr.dir;
-                if (varr.dimSize != undefined) {
+                var dir = varr.dims.get("0");
+                if (varr.dimSize == undefined) {
+                    dim = "0";
+                }
+                else {
                     if (dim == undefined)
                         throw "Error: Debes especificar la dimension de la variable " + varr.name;
-                    var typeDim = _this.pileType.pop();
-                    if (!typeDim || (typeDim != "int" && typeDim != "float"))
-                        throw "Error: Valor de dimensión no es entero o flotante";
-                    _this.squats.push(new Tuple_1.Tuple("VERFY", dim, _this.constantsMemory.request("0"), varr.dimSize));
-                    console.log("PUSHED VERIFY");
-                    _this.pushType("int");
-                    _this.pushVal(dir);
-                    _this.pushType(typeDim);
-                    _this.pushVal(dim);
-                    _this.pushOp("+");
-                    _this.checkOperation("2");
-                    var type = _this.pileType.pop();
-                    if (!(type == "int" || type == "float"))
-                        throw "Error: Valor de dimensión no es entero o flotante";
-                    dir = _this.pileVals.pop();
                 }
-                return dir;
+                var typeDim = _this.pileType.pop();
+                if (!typeDim || (typeDim != "int" && typeDim != "float"))
+                    throw "Error: Valor de dimensión no es entero o flotante";
+                _this.squats.push(new Tuple_1.Tuple("VERFY", dim, _this.constantsMemory.request("0"), varr.dimSize));
+                dir = varr.dims.get(dim);
+                _this.pushType("int");
+                _this.pushVal(dir);
+                _this.pushType("int");
+                _this.pushVal("0");
+                _this.pushOp("+");
+                _this.checkOperation("2");
+                var type = _this.pileType.pop();
+                if (!(type == "int" || type == "float"))
+                    throw "Error: Valor de dimensión no es entero o flotante";
+                dir = _this.pileVals.pop();
             };
             this.functionReturn = function (val) {
                 var type = _this.pileType.pop();
@@ -1164,7 +1162,7 @@ var PROY_FINAL;
             "CALA2": [["separ R_CALA_XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
             /**/ "R_CALA_XP0": [["XP0", "yy.callFunction_pushParam($1, yy.pileType.pop());"]],
             "ASI": [["ASI_DIMID_R ASI_EQ_R XP0", "yy.pushVal($3); yy.checkOperation(0); $$ = yy.pileVals.pop();"]],
-            "ASI_DIMID_R": [["DIMID", 'console.log("asdasd", $1);  yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n));']],
+            "ASI_DIMID_R": [["DIMID", 'yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n));']],
             "ASI_EQ_R": [["eq", 'yy.pushOp($1)']],
             /**/ "ASI_": [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
             "RET": [["ret s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`))"]],
