@@ -562,6 +562,16 @@ var PROY_FINAL;
                 _this.squats.push(new Tuple_1.Tuple("GOSUB", "", "", _this.pileFunc.pop()));
                 return id;
             };
+            this.setWriteProc = function (ids) {
+                ids.forEach(function (el) {
+                    _this.squats.push(new Tuple_1.Tuple("WRITE", "_", "_", el));
+                });
+            };
+            this.setReadProc = function (ids) {
+                ids.forEach(function (el) {
+                    _this.squats.push(new Tuple_1.Tuple("READ", "_", "_", el));
+                });
+            };
             this.functionReturnProc = function (value, type) {
                 var id = _this.pileFunc.peek();
                 if (!id)
@@ -1158,12 +1168,13 @@ var PROY_FINAL;
             "ASI_EQ_R": [["eq", 'yy.pushOp($1)']],
             /**/ "ASI_": [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
             "RET": [["ret s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`))"]],
-            "REE": ["read s_par DIMID REE_ e_par"],
-            "REE_": ["separ DIMID REE_", ""],
-            "WRT": ["write s_par WL e_par"],
-            "WL": ["W_C WL1"],
-            "WL1": ["separ W_C WL1", ""],
-            "W_C": ["STR", "XP0"],
+            "REE": [["read s_par REE_ e_par", "yy.setReadProc($3);"]],
+            /**/ "REE_": [["DIMID REE__", "$$ = [yy.getVarSavedMemory($1.n, $1.d)].concat($2);"]],
+            "REE__": [["separ DIMID REE__", "$$ = [yy.getVarSavedMemory($2.n, $2.d)].concat($3);"], ["", "$$ = [];"]],
+            "WRT": [["write s_par WL e_par", "yy.setWriteProc($3);"]],
+            "WL": [["W_C WL1", "$$ = $1.concat($2);"]],
+            "WL1": [["separ W_C WL1", "$$ = $2.concat($3);"], ["", "$$ = [];"]],
+            "W_C": [["XP0", "$$ = [$1];"]],
             "DEC": [["if s_par DEC_XP0_R e_par then B ELSE", 'yy.resolveJump()']],
             /**/ "DEC_XP0_R": [["XP0", "yy.decisionCheck(); yy.addJumpF($1);"]],
             /*--*/ "DEC_B_R": [["B", '']],
@@ -1281,7 +1292,7 @@ var PROY_FINAL;
                 a = 0;
             }
     `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[(1+2)-3],b[1+1],c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta[1] = 1;\n\t\t\t\tregresa (a[1] == 5);\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12+1];\n\t\t\t{\n\t\t\t\tholas(1,2.5,'c');\n\t\t\t\ta[4] = 123;\n\t\t\t\tb[1] = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a[4] == b[4]) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta[4] = a[3] * b[4];\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a[1] = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;\n\t\t\t\t\t\ta[1] = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\t\n\t\t\t\t\tb[0+0]= 123;\n\t\t\t\t}\n\n\t\t\t\tregresa (a[56]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q;\n\t\t\t{\n\t\t\t\ta[3] = 0 + 5;\n\n\t\t\t\tholas(49,-2.25, 'a');\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq= 123;\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[(1+2)-3],b[1+1],c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta[1] = 1;\n\t\t\t\tregresa (a[1] == 5);\n\t\t\t\tescribe(a[0], a[1],a[2]);\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12+1];\n\t\t\t{\n\t\t\t\tholas(1,2.5,'c');\n\t\t\t\ta[4] = 123;\n\t\t\t\tb[1] = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a[4] == b[4]) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta[4] = a[3] * b[4];\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a[1] = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;\n\t\t\t\t\t\ta[1] = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\t\n\t\t\t\t\tb[0+0]= 123;\n\t\t\t\t}\n\n\t\t\t\tregresa (a[56]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q;\n\t\t\t{\n\t\t\t\tlee(a[2]);\n\t\t\t\ta[3] = 0 + a[2];\n\n\t\t\t\tholas(49,-2.25, 'a');\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq= 123;\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();

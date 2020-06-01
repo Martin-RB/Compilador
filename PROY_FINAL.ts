@@ -712,6 +712,17 @@ export namespace PROY_FINAL{
 			return id;
 		}
 
+		setWriteProc = (ids: Array<string>) => {
+			ids.forEach(el => {
+				this.squats.push(new Tuple("WRITE", "_", "_", el));
+			});
+		}
+
+		setReadProc = (ids: Array<string>) => {
+			ids.forEach(el => {
+				this.squats.push(new Tuple("READ", "_", "_", el));
+			});
+		}
 
 
 		functionReturnProc = (value: string, type: string) => {
@@ -1286,12 +1297,13 @@ export namespace PROY_FINAL{
 			"ASI_EQ_R"			: [["eq", 'yy.pushOp($1)']],
 			/**/"ASI_"				: [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
 			"RET"				: [["ret s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`))"]],
-			"REE"				: ["read s_par DIMID REE_ e_par"],
-			"REE_"				: ["separ DIMID REE_", ""],
-			"WRT"				: ["write s_par WL e_par"],
-			"WL"				: ["W_C WL1"],
-			"WL1"				: ["separ W_C WL1", ""],
-			"W_C"				: ["STR", "XP0"],
+			"REE"				: [["read s_par REE_ e_par", "yy.setReadProc($3);"]],
+			/**/"REE_"			: [["DIMID REE__", "$$ = [yy.getVarSavedMemory($1.n, $1.d)].concat($2);"]],
+			"REE__"				: [["separ DIMID REE__", "$$ = [yy.getVarSavedMemory($2.n, $2.d)].concat($3);"], ["", "$$ = [];"]],
+			"WRT"				: [["write s_par WL e_par", "yy.setWriteProc($3);"]],
+			"WL"				: [["W_C WL1", "$$ = $1.concat($2);"]],
+			"WL1"				: [["separ W_C WL1", "$$ = $2.concat($3);"], ["", "$$ = [];"]],
+			"W_C"				: [["XP0", "$$ = [$1];"]],
 			"DEC"				: [["if s_par DEC_XP0_R e_par then B ELSE", 'yy.resolveJump()']],
 			/**/"DEC_XP0_R"			: [["XP0", "yy.decisionCheck(); yy.addJumpF($1);"]],
 			/*--*/"DEC_B_R"			: [["B", '']],
@@ -1421,6 +1433,7 @@ export namespace PROY_FINAL{
 			{
 				a[1] = 1;
 				regresa (a[1] == 5);
+				escribe(a[0], a[1],a[2]);
 			}
 
 			funcion int holas(int X, float y, char a123123);
@@ -1452,7 +1465,8 @@ export namespace PROY_FINAL{
 			principal ()
 			var float:hg,q;
 			{
-				a[3] = 0 + 5;
+				lee(a[2]);
+				a[3] = 0 + a[2];
 
 				holas(49,-2.25, 'a');
 
