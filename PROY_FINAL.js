@@ -481,7 +481,7 @@ var PROY_FINAL;
                 _this.pushOp("=");
                 _this.pileVals.push(varDir);
                 _this.pileType.push(varType);
-                _this.pileVals.push("1");
+                _this.pileVals.push(_this.constantsMemory.request("1"));
                 _this.pileType.push("int");
                 _this.pushOp("+");
                 _this.checkOperation("2");
@@ -542,6 +542,7 @@ var PROY_FINAL;
                 });
             };
             this.functionReturnProc = function (value, type) {
+                var _a;
                 var id = _this.pileFunc.peek();
                 if (!id)
                     throw "No hay función a la cual asignar 'regresa'";
@@ -550,7 +551,9 @@ var PROY_FINAL;
                     throw "No hay funci\u00F3n declarada llamada '" + id + "'";
                 if (func.type != type)
                     throw "Se ha regresado un tipo '" + type + "' en la funci\u00F3n '" + id + "' de tipo '" + func.type + "'.";
+                console.log("FUNCTIONASS: ", value);
                 func.value = value;
+                console.log((_a = _this.funcTable.get(id)) === null || _a === void 0 ? void 0 : _a.value);
             };
             this.addJumpT = function (eValue, destiny) {
                 var _dest = "_";
@@ -1010,7 +1013,6 @@ var PROY_FINAL;
             var rightOnd = this.pileVals.pop();
             var leftOnd = this.pileVals.pop();
             console.log("Onds: ", leftOnd, rightOnd);
-            this.printQuads();
             if (!rightOnd || !leftOnd)
                 throw "Error de valores: Cantidad de valores incorrecta";
             console.log(JSON.stringify(this.pileType.peek()));
@@ -1328,7 +1330,7 @@ var PROY_FINAL;
                     q[1]= 123;
                 }
         `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[1] = 1 * (9);\n\t\t\t\tsi(v[1] > 0) entonces{\n\t\t\t\t\tescribe (v[1]);\n\t\t\t\t}\n\n\t\t\t\tr[1] = 10.0;\n\t\t\t\tr[0] = 4+1;\n\t\t\t\tregresa (r[1] + v[1] + r[0]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 1+1 + holas();\n\t\t\t\ty = 1 + x;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y,z;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[0] = 0;\n\t\t\t\tv[1] = 1;\n\t\t\t\tr[1] = 1;\n\n\t\t\t\tdesde v[0] = 0 hasta 9 hacer\n\t\t\t\t{\n\t\t\t\t\tr[1] = r[1] + 1;\n\t\t\t\t}\n\n\t\t\t\tescribe(r[1]);\n\t\t\t\tescribe(v[0]);\n\n\t\t\t\tsi(v[1] > 9) entonces{\n\t\t\t\t\tescribe (v[1]);\n\t\t\t\t}\n\t\t\t\tsino{\n\t\t\t\t\tescribe (r[1]);\n\t\t\t\t}\n\n\t\t\t\tregresa (r[1] + v[1] + r[1]);\n\t\t\t}\n\n\t\t\tfuncion float fibby(int h);\n\t\t\t{\n\t\t\t\tregresa (1.0);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 1+1 + holas();\n\t\t\t\tz = fibby(1);\n\t\t\t\ty = 1 + x;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();

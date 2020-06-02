@@ -36,10 +36,14 @@ export class KapussinoVirtualMachine{
     }
 
     resolve(){
-        while (this._ctxt.IP < this._quads.length) {
-            const el = this._quads[this._ctxt.IP];
-            this.resolveIt(el);
-        }
+        if(this._ctxt.IP < this._quads.length)
+            setTimeout(() => {console.log("IP:" , this._ctxt.IP);
+            ; this.resolveIter(this._ctxt.IP); this.resolve();}, 10);
+    }
+
+    private resolveIter(ip: number){
+        const el = this._quads[ip];
+        this.resolveIt(el);
     }
 
     private isMemInsideKnstn(dir: string) {
@@ -59,6 +63,7 @@ export class KapussinoVirtualMachine{
         let isNumber: boolean;
         let next: number | undefined;
         this._ctxt.IP += 1;
+        
 
         switch (row.v1) {
             case "=":
@@ -66,11 +71,14 @@ export class KapussinoVirtualMachine{
                 destiny = this.resolvePointer(row.v4!);                
                 
                 data = this.getMemoryContent(origin);
+                console.log(`>>> ${destiny}:${row.v4!} = ${data}`);
                 this._ctxt.Mem.set(destiny, data);                
                 break;
             case "+":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
                 ond2 = this.getMemoryContent(this.resolvePointer(row.v3!));
+                console.log(this.resolvePointer(row.v2!));
+                
                 destiny = this.resolvePointer(row.v4!);
                 
                 isNumber = this.isNumber(ond1) && 
@@ -84,7 +92,10 @@ export class KapussinoVirtualMachine{
                     data = ond1 + ond2;
                 }
 
+                console.log(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} + ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+
                 this._ctxt.Mem.set(destiny, data);
+                console.log(`>>> ${data}`);
                 break;
             case "-":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -163,8 +174,133 @@ export class KapussinoVirtualMachine{
                     data = "false";
                 }
 
-                console.log(`>>> ${ond1} > ${ond2} = ${data}`);
+                this._ctxt.Mem.set(destiny, data);
+                break;
+            case "<":
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3!));
+                destiny = this.resolvePointer(row.v4!);
                 
+                isNumber = this.isNumber(ond1) && 
+                            this.isNumber(ond2);
+                
+                if(isNumber){
+                    data = this.getNumber(ond1) <
+                            this.getNumber(ond2);
+                }
+                else{
+                    data = ond1 < ond2;
+                }
+
+                if(data as boolean){
+                    data = "true";
+                }
+                else{
+                    data = "false";
+                }
+
+                this._ctxt.Mem.set(destiny, data);
+                break;
+            case ">=":
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3!));
+                destiny = this.resolvePointer(row.v4!);
+                
+                isNumber = this.isNumber(ond1) && 
+                            this.isNumber(ond2);
+                
+                if(isNumber){
+                    data = this.getNumber(ond1) >=
+                            this.getNumber(ond2);
+                }
+                else{
+                    data = ond1 >= ond2;
+                }
+
+                if(data as boolean){
+                    data = "true";
+                }
+                else{
+                    data = "false";
+                }
+
+                this._ctxt.Mem.set(destiny, data);
+                break;
+            case "<=":
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3!));
+                destiny = this.resolvePointer(row.v4!);
+                
+                isNumber = this.isNumber(ond1) && 
+                            this.isNumber(ond2);
+                
+                if(isNumber){
+                    data = this.getNumber(ond1) <=
+                            this.getNumber(ond2);
+                }
+                else{
+                    data = ond1 <= ond2;
+                }
+
+                if(data as boolean){
+                    data = "true";
+                }
+                else{
+                    data = "false";
+                }
+
+                console.log(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} <= ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                
+
+                this._ctxt.Mem.set(destiny, data);
+                break;
+            case "==":
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3!));
+                destiny = this.resolvePointer(row.v4!);
+                
+                isNumber = this.isNumber(ond1) && 
+                            this.isNumber(ond2);
+                
+                if(isNumber){
+                    data = this.getNumber(ond1) ==
+                            this.getNumber(ond2);
+                }
+                else{
+                    data = ond1 == ond2;
+                }
+
+                if(data as boolean){
+                    data = "true";
+                }
+                else{
+                    data = "false";
+                }
+
+                this._ctxt.Mem.set(destiny, data);
+                break;
+            case "!=":
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3!));
+                destiny = this.resolvePointer(row.v4!);
+                
+                isNumber = this.isNumber(ond1) && 
+                            this.isNumber(ond2);
+                
+                if(isNumber){
+                    data = this.getNumber(ond1) !=
+                            this.getNumber(ond2);
+                }
+                else{
+                    data = ond1 != ond2;
+                }
+
+                if(data as boolean){
+                    data = "true";
+                }
+                else{
+                    data = "false";
+                }
 
                 this._ctxt.Mem.set(destiny, data);
                 break;
@@ -175,6 +311,7 @@ export class KapussinoVirtualMachine{
 
             case "JUMP":
                 next = this.getInt(row.v4!);
+                console.log(">>> DETECTADO JUMP. SALTANDO A " + next);
                 if(!next) throw "Error: JUMP fuera de los limites";
                 this._ctxt.IP = next;
                 break;
@@ -184,13 +321,17 @@ export class KapussinoVirtualMachine{
                         == "false"
                         )
                 {                    
+                    
                     next = this.getInt(row.v4!);
+                    console.log(">>> DETECTADO FALSE. SALTANDO A " + next);
                     if(!next) throw "Error: JUMP fuera de los limites";
                     this._ctxt.IP = next;
                 }
                 break;
             case "GOSUB":
                 this._funcPile.push(this._funcTable.get(row.v4!)!.id);
+                console.log(this._funcTable.get(row.v4!));
+                
 
                 let ctxt = new Context(this._funcTable.get(row.v4!)!.ip);
                 ctxt.SonCtxt = this._ctxt;
@@ -201,6 +342,8 @@ export class KapussinoVirtualMachine{
                 let pile = this._funcPile.pop();
                 if(pile){
                     let func = this._funcTable.get(pile);
+                    console.log(func);
+                    
                     let dir = func!.value!;
                     this._ctxt.SonCtxt!.Mem.set(dir, this._ctxt.Mem.get(dir));
                 }
@@ -215,8 +358,8 @@ export class KapussinoVirtualMachine{
     }
 
     private resolvePointer(dir: string){       
-         
         if(dir[0] == "*"){
+            
             return this._ctxt.Mem.get(dir.slice(1));
         }
         return dir;

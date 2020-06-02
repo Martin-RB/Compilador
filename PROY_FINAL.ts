@@ -546,7 +546,6 @@ export namespace PROY_FINAL{
 			let rightOnd = this.pileVals.pop();
 			let leftOnd = this.pileVals.pop();
 			console.log("Onds: ", leftOnd, rightOnd);
-			this.printQuads();
 			if(!rightOnd || !leftOnd) throw "Error de valores: Cantidad de valores incorrecta";
 			console.log(JSON.stringify(this.pileType.peek()))
 			let rightType = this.pileType.pop();
@@ -591,7 +590,7 @@ export namespace PROY_FINAL{
 			this.pushOp("=");
 			this.pileVals.push(varDir);
 			this.pileType.push(varType);
-			this.pileVals.push("1");
+			this.pileVals.push(this.constantsMemory.request("1"));
 			this.pileType.push("int");
 			this.pushOp("+");
 			this.checkOperation("2");
@@ -682,7 +681,10 @@ export namespace PROY_FINAL{
 			if(func.type != type) 
 				throw `Se ha regresado un tipo '${type}' en la función '${id}' de tipo '${func.type}'.`;
 						
+				console.log("FUNCTIONASS: ", value);
 			func.value = value;
+			console.log(this.funcTable.get(id)?.value);
+			
 		}
 
 		getMemoryType(type: string){
@@ -1439,24 +1441,42 @@ export namespace PROY_FINAL{
 
 	console.log(p.parse(`
 			programa XD; 
-			var int: x, y;
+			var int: x, y,z;
 
 			funcion float holas();
 			var float: v[2], r[2];
 			{
-				v[1] = 1 * (9);
-				si(v[1] > 0) entonces{
-					escribe (v[1]);
+				v[0] = 0;
+				v[1] = 1;
+				r[1] = 1;
+
+				desde v[0] = 0 hasta 9 hacer
+				{
+					r[1] = r[1] + 1;
 				}
 
-				r[1] = 10.0;
-				r[0] = 4+1;
-				regresa (r[1] + v[1] + r[0]);
+				escribe(r[1]);
+				escribe(v[0]);
+
+				si(v[1] > 9) entonces{
+					escribe (v[1]);
+				}
+				sino{
+					escribe (r[1]);
+				}
+
+				regresa (r[1] + v[1] + r[1]);
+			}
+
+			funcion float fibby(int h);
+			{
+				regresa (1.0);
 			}
 
 			principal ()
 			{
 				x = 1+1 + holas();
+				z = fibby(1);
 				y = 1 + x;
 				escribe(y);
 			}
