@@ -428,14 +428,13 @@ var PROY_FINAL;
                 var varr = _this.varTable.get(id);
                 console.log("Variable to work: ", varr);
                 var dir = varr.dir;
-                console.log(varr);
-                if (varr.dimSize != undefined && varr.dimSize != "1") {
+                if (varr.dimSize != "1") {
                     if (dim == undefined)
                         throw "Error: Debes especificar la dimension de la variable " + varr.name;
                     var typeDim = _this.pileType.pop();
                     if (!typeDim || (typeDim != "int" && typeDim != "float"))
                         throw "Error: Valor de dimensión no es entero o flotante";
-                    _this.squats.push(new Tuple_1.Tuple("VERFY", dim, _this.constantsMemory.request("0"), varr.dimSize));
+                    _this.squats.push(new Tuple_1.Tuple("VERFY", dim, _this.constantsMemory.request("0"), _this.constantsMemory.request(varr.dimSize)));
                     console.log("PUSHED VERIFY");
                     _this.pushType("int");
                     _this.pushVal(dir);
@@ -1141,8 +1140,8 @@ var PROY_FINAL;
             /**/ "VG": [["var_dec TD", 'yy.addFromString($2, yy.state);'], ["", ""]],
             "TD": [["var_type definer TDL1 e_stmt TDR", "$$ = [{t:$1, vs:$3}].concat($5);"]],
             "TDR": [["TD", "$$ = $1"], ["", "$$ = undefined"]],
-            "TDL1": [["NOT_DIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
-            "TDL2": [["separ NOT_DIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
+            "TDL1": [["NODIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
+            "TDL2": [["separ NODIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
             "FD": [["FD_DEC_R R_FD_VG R_FD_B FD", ""], ["", ""]],
             /**/ "R_FD_VG": [["VG", "yy.setLocalVarNumber();"]],
             /**/ "FD_DEC_R": [["R_DEC_func s_par R_FD_PDL1 e_par e_stmt", "console.log('bbb', $3);yy.functionAddArgs($3);"]],
@@ -1188,9 +1187,8 @@ var PROY_FINAL;
             /**/ "DIMID_": [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; ;'], ["", '']],
             "DIMID_S_CORCH_R": [["s_corch", 'yy.pushCorchState();']],
             "DIMID_E_CORCH_R": [["e_corch", 'yy.popCorchState();']],
-            /**/ "NOT_DIMID": [["id NOT_DIMID_", '$$ = {n:$1, d:$2};']],
-            /**/ "NOT_DIMID_": [["s_corch NOT_DIMID_TYPE e_corch", '$$ = $2;'], ["", '']],
-            /**/ "NOT_DIMID_TYPE": [["INTEGER", "$$ = $1; //yy.pileType.push('int')"]],
+            "NODIMID": [["id NODIMID_", '$$ = {n:$1, d:$2};']],
+            /**/ "NODIMID_": [["s_corch INTEGER e_corch", '$$ = $2; yy.pileType.push("int")'], ["", '']],
             /**/ "XP0": [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation();"]],
             /**/ "XP0_": [["R_OP_T4 XP1 XP0_", "$$ = $2; console.log('first', $1, $2, yy.pileVals.peek());"], ["", "console.log('end');"]],
             "R_OP_T4": [["op_t4", "$$ = $1; yy.pushOp($1)"]],
@@ -1292,7 +1290,7 @@ var PROY_FINAL;
                 a = 0;
             }
     `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[1],b[1],c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta[1] = 1;\n\t\t\t\tregresa (a[1] == 5);\n\t\t\t\tescribe(a[0], a[1],a[2]);\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12];\n\t\t\t{\n\t\t\t\tholas(1,2.5,'c');\n\t\t\t\ta[4] = 123;\n\t\t\t\tb[1] = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a[4] == b[4]) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta[4] = a[3] * b[4];\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a[1] = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;\n\t\t\t\t\t\ta[1] = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\t\n\t\t\t\t\tb[0+0]= 123;\n\t\t\t\t}\n\n\t\t\t\tregresa (a[56]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q;\n\t\t\t{\n\t\t\t\tlee(a[2]);\n\t\t\t\ta[3] = 0 + a[2];\n\n\t\t\t\tholas(49,-2.25, 'a');\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq= 123;\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[3],b[1],c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta[1] = 1;\n\t\t\t\tregresa (a[1] == 5);\n\t\t\t\tescribe(a[0], a[1],a[2]);\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12];\n\t\t\t{\n\t\t\t\tholas(1,2.5,'c');\n\t\t\t\ta[4] = 123;\n\t\t\t\tb[1] = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a[4] == b[4]) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta[4] = a[3] * b[4];\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a[1] = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta[1] = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\t\n\t\t\t\t\tb[0+0]= 123;\n\t\t\t\t}\n\n\t\t\t\tregresa (a[56]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q[2],s;\n\t\t\t{\n\t\t\t\tlee(hg,s,q[1]);\n\t\t\t\thg = 100;\n\t\t\t\ts = 104;\n\n\t\t\t\ta[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;\n\n\t\t\t\tlee(a[2]);\n\t\t\t\ta[3] = 0 + a[2];\n\n\t\t\t\tholas(49,-2.25, 'a');\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq[1]= 123;\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();

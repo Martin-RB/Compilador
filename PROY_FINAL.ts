@@ -201,7 +201,7 @@ export namespace PROY_FINAL{
 		name: string,
 		type: string,
 		scope: string,
-		dimSize: string | undefined,
+		dimSize: string,
 		dir: any | HashMap<any> | undefined,
 	}
 
@@ -490,14 +490,12 @@ export namespace PROY_FINAL{
 			console.log("Variable to work: ", varr);
 			
 			let dir = varr.dir;
-			console.log(varr);
-			
-			if(varr.dimSize != undefined && varr.dimSize != "1"){
+			if(varr.dimSize != "1"){
 				if(dim == undefined) throw "Error: Debes especificar la dimension de la variable " + varr.name;
 				let typeDim = this.pileType.pop();
 				if(!typeDim || (typeDim != "int" && typeDim != "float")) throw "Error: Valor de dimensión no es entero o flotante";
 
-				this.squats.push(new Tuple("VERFY", dim, this.constantsMemory.request("0"), varr.dimSize));
+				this.squats.push(new Tuple("VERFY", dim, this.constantsMemory.request("0"), this.constantsMemory.request(varr.dimSize) ));
 				console.log("PUSHED VERIFY");
 				
 				this.pushType("int");
@@ -1253,8 +1251,8 @@ export namespace PROY_FINAL{
 			/**/"VG"				: [["var_dec TD", 'yy.addFromString($2, yy.state);'], ["", ""]],
 			"TD"				: [["var_type definer TDL1 e_stmt TDR", "$$ = [{t:$1, vs:$3}].concat($5);"]],
 			"TDR"				: [["TD", "$$ = $1"], ["", "$$ = undefined"]],
-			"TDL1"				: [["NOT_DIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
-			"TDL2"				: [["separ NOT_DIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
+			"TDL1"				: [["NODIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
+			"TDL2"				: [["separ NODIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
 			"FD"				: [["FD_DEC_R R_FD_VG R_FD_B FD", ""], ["", ""]],
 			/**/"R_FD_VG"			: [["VG", "yy.setLocalVarNumber();"]],
 			/**/"FD_DEC_R"			: [["R_DEC_func s_par R_FD_PDL1 e_par e_stmt", "console.log('bbb', $3);yy.functionAddArgs($3);"]],
@@ -1300,11 +1298,8 @@ export namespace PROY_FINAL{
 			/**/"DIMID_"			: [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; ;'], ["", '']],
 			"DIMID_S_CORCH_R"	: [["s_corch", 'yy.pushCorchState();']],
 			"DIMID_E_CORCH_R"	: [["e_corch", 'yy.popCorchState();']],
-
-			/**/"NOT_DIMID"				: [["id NOT_DIMID_", '$$ = {n:$1, d:$2};']],
-			/**/"NOT_DIMID_"			: [["s_corch NOT_DIMID_TYPE e_corch", '$$ = $2;'], ["", '']],
-			/**/"NOT_DIMID_TYPE"		: [["INTEGER", "$$ = $1; //yy.pileType.push('int')"]],
-
+			"NODIMID"				: [["id NODIMID_", '$$ = {n:$1, d:$2};']],
+			/**/"NODIMID_"			: [["s_corch INTEGER e_corch", '$$ = $2; yy.pileType.push("int")'], ["", '']],
 			/**/"XP0"				: [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation();"]],
 			/**/"XP0_"				: [["R_OP_T4 XP1 XP0_", "$$ = $2; console.log('first', $1, $2, yy.pileVals.peek());"], ["", "console.log('end');"]],
 			"R_OP_T4"			: [["op_t4", "$$ = $1; yy.pushOp($1)"]],
@@ -1411,7 +1406,7 @@ export namespace PROY_FINAL{
 	`.replace("\t", ""))); */
 	console.log(p.parse(`
 			programa XD; 
-			var int: a[1],b[1],c; float: r;
+			var int: a[3],b[1],c; float: r;
 			%% AASDASD
 			
 			funcion bool getAll();
@@ -1437,7 +1432,6 @@ export namespace PROY_FINAL{
 				} sino {
 					desde a[1] = 5 hasta 41 hacer
 					{
-						a[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;
 						a[1] = 7 + 4 * 47;
 					}
 					
@@ -1448,8 +1442,14 @@ export namespace PROY_FINAL{
 			}
 
 			principal ()
-			var float:hg,q;
+			var float:hg,q[2],s;
 			{
+				lee(hg,s,q[1]);
+				hg = 100;
+				s = 104;
+
+				a[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;
+
 				lee(a[2]);
 				a[3] = 0 + a[2];
 
@@ -1459,7 +1459,7 @@ export namespace PROY_FINAL{
 				{
 					hg = 7 + 4 * 47;
 				}
-				q= 123;
+				q[1]= 123;
 			}
 	`.replace("\t", "")));
 
