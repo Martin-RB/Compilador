@@ -2,6 +2,8 @@ import { HashMap } from "./DataStruc/HashMap";
 import { Tuple } from "./DataStruc/Tuple";
 import { Stack } from "./DataStruc/Stack";
 import { FuncTable, IFuncTableRow, IArg } from "./classes/FuncTable";
+import { MortalKonstants } from "./classes/MortalKonstants";
+import { KapussinoVirtualMachine } from "./classes/KappussinoVirtualMachine";
 
 // COlumnas: Nombre, tipo, scope, valor(es), length
 
@@ -125,18 +127,18 @@ export namespace PROY_FINAL{
 
 		requestMemory(location: number, type: number, size: number): string{
 			if(location == Memory.LOCAL_MEM){
-				return `*${this.getFromTypeAndChunk(this._local, type, size)}`;
+				return `${this.getFromTypeAndChunk(this._local, type, size)}`;
 			}
 			else if(location == Memory.TEMP_MEM){
 				// + _localSize to set offset
-				return `*${this.getFromTypeAndChunk(this._temp, type, size) + this._localSize}`;
+				return `${this.getFromTypeAndChunk(this._temp, type, size) + this._localSize}`;
 			}
 			else if(location == Memory.GLOBAL_MEM){
 				if(this._father != null){
 					return this._father.requestMemory(Memory.GLOBAL_MEM, type, size);
 				}
 				else{
-					return `*${this.getFromTypeAndChunk(this._local, type, size)}`;
+					return `${this.getFromTypeAndChunk(this._local, type, size)}`;
 				}
 			}
 			else{
@@ -164,36 +166,6 @@ export namespace PROY_FINAL{
 
 		getNextFree(){
 			return this._initialOffset + this._localSize + this._tempSize;
-		}
-	}
-
-	// Constant's memory
-	class MortalKonstants{
-		private _constants: number;
-		private _max: number;
-		private _registered: HashMap<number>;
-		constructor(offset: number, size: number){
-			this._constants = offset;
-			this._max = size;
-			this._registered = new HashMap<number>();
-		}
-
-		request(constant: string){
-			let val = this._registered.get(constant);
-			if(!val){
-				this._registered.set(constant, this.getNewMemory());
-				val = this._registered.get(constant);
-			}
-			return `*${val}`;
-		}
-
-		private getNewMemory(){
-			let num = this._constants;
-			this._constants++;
-			if(this._constants >= this._max){
-				throw "Sobrecarga de memoria para enteros";
-			}
-			return num;
 		}
 	}
 
@@ -327,14 +299,6 @@ export namespace PROY_FINAL{
 		addVariableToTable = (name: string, type: string, scope: string, dimSize: string | undefined) => {
 			if(!dimSize) dimSize = "1";
 			this.varTable.set(name, {name, type, scope, dimSize, dir: this.actualMemory.requestMemory(Memory.LOCAL_MEM, this.getMemoryType(type), parseInt(dimSize))});
-		}
-		addVariablesToTable = (names: string[], type: string, scope: string, dimSizes: Array<string>) => {
-			for (let i = 0; i < names.length; i++) {
-				const name = names[i];
-				const dimSize = dimSizes[i];
-
-				this.varTable.set(name, {name, type, scope, dimSize, dir: undefined});
-			}
 		}
 		setVariableDir = (name: string, idx?: string) => {
 
@@ -498,12 +462,17 @@ export namespace PROY_FINAL{
 				this.squats.push(new Tuple("VERFY", dim, this.constantsMemory.request("0"), this.constantsMemory.request(varr.dimSize) ));
 				console.log("PUSHED VERIFY");
 				
+				let memSpace = this.actualMemory.requestMemory(Memory.TEMP_MEM, this.getMemoryType("int"), 1)?.toString();
+				this.squats.push(new Tuple("+", this.constantsMemory.request(dir), dim, memSpace));
+				this.pileVals.push("*" + memSpace);
 				this.pushType("int");
+
+				/* this.pushType("int");
 				this.pushVal(dir);
 				this.pushType(typeDim);
 				this.pushVal(dim);
 				this.pushOp("+");
-				this.checkOperation("2");
+				this.checkOperation("2"); */
 				let type = this.pileType.pop();
 				console.log("PILE VALIUDATED");
 				
@@ -548,7 +517,7 @@ export namespace PROY_FINAL{
 			
 			console.log("HEEEERE");
 			
-			this.squats.push(new Tuple("=", func.value!, "_", "*" + mem));
+			this.squats.push(new Tuple("=", func.value!, "_", mem));
 			
 			return mem;
 		}
@@ -1363,6 +1332,11 @@ export namespace PROY_FINAL{
 	 * Ya funcionan los estatutos lee, escribe
 	 * Ya funciona el return y se asigna a la funcion correspondiente 
 	 * Se comenzará a hacer la VM
+	 * 
+	 * Bitacora final:
+	 * Arreglada memoria para que no tenga un asterisco. Ahora tiene 1 solo si es referencia a memoria.
+	 * Movida clase MortalKonstants a archivo independiente.
+
 	 */
 
 	var p = new Parser(grammar);
@@ -1404,7 +1378,7 @@ export namespace PROY_FINAL{
 				a = 0;
 			}
 	`.replace("\t", ""))); */
-	console.log(p.parse(`
+/* 	console.log(p.parse(`
 			programa XD; 
 			var int: a[3],b[1],c; float: r;
 			%% AASDASD
@@ -1461,8 +1435,27 @@ export namespace PROY_FINAL{
 				}
 				q[1]= 123;
 			}
-	`.replace("\t", "")));
+	`.replace("\t", ""))); */
 
+	console.log(p.parse(`
+			programa XD; 
+			var int: x, y;
+
+			funcion float holas();
+			var float: v[2], r[2];
+			{
+				v[1] = 1;
+				r[1] = 10.0;
+				regresa (r[1] + v[1]);
+			}
+
+			principal ()
+			{
+				x = 69+holas();
+				y = 420 + x;
+				escribe(y);
+			}
+	`.replace("\t", "")));
 
 	console.log(p.yy.printQuads());
 	p.yy.varTable.print()
@@ -1471,6 +1464,13 @@ export namespace PROY_FINAL{
 
 	//p.yy.varTable.print();
 	//p.yy.pileVals.print();
+
+console.log("INICIA PROGRAMA");
+
+	console.log(p.yy.varTable);
 	
+
+	let VM = new KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
+	VM.resolve();
 }
 

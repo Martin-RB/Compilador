@@ -17,6 +17,8 @@ var HashMap_1 = require("./DataStruc/HashMap");
 var Tuple_1 = require("./DataStruc/Tuple");
 var Stack_1 = require("./DataStruc/Stack");
 var FuncTable_1 = require("./classes/FuncTable");
+var MortalKonstants_1 = require("./classes/MortalKonstants");
+var KappussinoVirtualMachine_1 = require("./classes/KappussinoVirtualMachine");
 // COlumnas: Nombre, tipo, scope, valor(es), length
 var PROY_FINAL;
 (function (PROY_FINAL) {
@@ -107,18 +109,18 @@ var PROY_FINAL;
         };
         Memory.prototype.requestMemory = function (location, type, size) {
             if (location == Memory.LOCAL_MEM) {
-                return "*" + this.getFromTypeAndChunk(this._local, type, size);
+                return "" + this.getFromTypeAndChunk(this._local, type, size);
             }
             else if (location == Memory.TEMP_MEM) {
                 // + _localSize to set offset
-                return "*" + (this.getFromTypeAndChunk(this._temp, type, size) + this._localSize);
+                return "" + (this.getFromTypeAndChunk(this._temp, type, size) + this._localSize);
             }
             else if (location == Memory.GLOBAL_MEM) {
                 if (this._father != null) {
                     return this._father.requestMemory(Memory.GLOBAL_MEM, type, size);
                 }
                 else {
-                    return "*" + this.getFromTypeAndChunk(this._local, type, size);
+                    return "" + this.getFromTypeAndChunk(this._local, type, size);
                 }
             }
             else {
@@ -153,31 +155,6 @@ var PROY_FINAL;
         Memory.BOOL = 13;
         Memory.VOID = 14;
         return Memory;
-    }());
-    // Constant's memory
-    var MortalKonstants = /** @class */ (function () {
-        function MortalKonstants(offset, size) {
-            this._constants = offset;
-            this._max = size;
-            this._registered = new HashMap_1.HashMap();
-        }
-        MortalKonstants.prototype.request = function (constant) {
-            var val = this._registered.get(constant);
-            if (!val) {
-                this._registered.set(constant, this.getNewMemory());
-                val = this._registered.get(constant);
-            }
-            return "*" + val;
-        };
-        MortalKonstants.prototype.getNewMemory = function () {
-            var num = this._constants;
-            this._constants++;
-            if (this._constants >= this._max) {
-                throw "Sobrecarga de memoria para enteros";
-            }
-            return num;
-        };
-        return MortalKonstants;
     }());
     var VarTable = /** @class */ (function (_super) {
         __extends(VarTable, _super);
@@ -236,7 +213,7 @@ var PROY_FINAL;
             this.memGVarSize = 5000;
             this.memGTempSize = 10000;
             this.memGConstSize = 5000;
-            this.constantsMemory = new MortalKonstants(0, this.memGConstSize);
+            this.constantsMemory = new MortalKonstants_1.MortalKonstants(0, this.memGConstSize);
             this.actualMemory = new Memory(this.memGConstSize, this.memGVarSize, this.memGTempSize);
             this.actualFunction = null;
             this.qb = new HashMap_1.HashMap();
@@ -290,13 +267,6 @@ var PROY_FINAL;
                 if (!dimSize)
                     dimSize = "1";
                 _this.varTable.set(name, { name: name, type: type, scope: scope, dimSize: dimSize, dir: _this.actualMemory.requestMemory(Memory.LOCAL_MEM, _this.getMemoryType(type), parseInt(dimSize)) });
-            };
-            this.addVariablesToTable = function (names, type, scope, dimSizes) {
-                for (var i = 0; i < names.length; i++) {
-                    var name_1 = names[i];
-                    var dimSize = dimSizes[i];
-                    _this.varTable.set(name_1, { name: name_1, type: type, scope: scope, dimSize: dimSize, dir: undefined });
-                }
             };
             this.setVariableDir = function (name, idx) {
             };
@@ -422,6 +392,7 @@ var PROY_FINAL;
                 return mem;
             };
             this.getVarSavedMemory = function (id, dim) {
+                var _a;
                 if (!_this.varTable.exist(id)) {
                     throw "Error: Variable " + id + " no declarada";
                 }
@@ -436,12 +407,16 @@ var PROY_FINAL;
                         throw "Error: Valor de dimensión no es entero o flotante";
                     _this.squats.push(new Tuple_1.Tuple("VERFY", dim, _this.constantsMemory.request("0"), _this.constantsMemory.request(varr.dimSize)));
                     console.log("PUSHED VERIFY");
+                    var memSpace = (_a = _this.actualMemory.requestMemory(Memory.TEMP_MEM, _this.getMemoryType("int"), 1)) === null || _a === void 0 ? void 0 : _a.toString();
+                    _this.squats.push(new Tuple_1.Tuple("+", _this.constantsMemory.request(dir), dim, memSpace));
+                    _this.pileVals.push("*" + memSpace);
                     _this.pushType("int");
-                    _this.pushVal(dir);
-                    _this.pushType(typeDim);
-                    _this.pushVal(dim);
-                    _this.pushOp("+");
-                    _this.checkOperation("2");
+                    /* this.pushType("int");
+                    this.pushVal(dir);
+                    this.pushType(typeDim);
+                    this.pushVal(dim);
+                    this.pushOp("+");
+                    this.checkOperation("2"); */
                     var type = _this.pileType.pop();
                     console.log("PILE VALIUDATED");
                     if (!(type == "int" || type == "float"))
@@ -474,7 +449,7 @@ var PROY_FINAL;
                 var mem = _this.actualMemory.requestMemory(Memory.GLOBAL_MEM, _this.getMemoryType(func.type), 1);
                 console.log(mem);
                 console.log("HEEEERE");
-                _this.squats.push(new Tuple_1.Tuple("=", func.value, "_", "*" + mem));
+                _this.squats.push(new Tuple_1.Tuple("=", func.value, "_", mem));
                 return mem;
             };
             this.endOperation = function () {
@@ -1250,6 +1225,11 @@ var PROY_FINAL;
      * Ya funcionan los estatutos lee, escribe
      * Ya funciona el return y se asigna a la funcion correspondiente
      * Se comenzará a hacer la VM
+     *
+     * Bitacora final:
+     * Arreglada memoria para que no tenga un asterisco. Ahora tiene 1 solo si es referencia a memoria.
+     * Movida clase MortalKonstants a archivo independiente.
+
      */
     var p = new Parser(grammar);
     // Contexto interno
@@ -1290,10 +1270,72 @@ var PROY_FINAL;
                 a = 0;
             }
     `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: a[3],b[1],c; float: r;\n\t\t\t%% AASDASD\n\t\t\t\n\t\t\tfuncion bool getAll();\n\t\t\t{\n\t\t\t\ta[1] = 1;\n\t\t\t\tregresa (a[1] == 5);\n\t\t\t\tescribe(a[0], a[1],a[2]);\n\t\t\t}\n\n\t\t\tfuncion int holas(int X, float y, char a123123);\n\t\t\t\tvar char: x,y,z[12];\n\t\t\t{\n\t\t\t\tholas(1,2.5,'c');\n\t\t\t\ta[4] = 123;\n\t\t\t\tb[1] = 2;\n\t\t\t\tc = 123 - 1;\n\t\t\t\tsi (a[4] == b[4]) entonces {\n\t\t\t\t\tmientras(a[1] == 123 || a[3] > 3 && getAll()) haz\n\t\t\t\t\t{\n\t\t\t\t\t\tc[5] = -123.0123e5621 + a[4];\n\t\t\t\t\t}\n\t\t\t\t\ta[4] = a[3] * b[4];\n\t\t\t\t} sino {\n\t\t\t\t\tdesde a[1] = 5 hasta 41 hacer\n\t\t\t\t\t{\n\t\t\t\t\t\ta[1] = 7 + 4 * 47;\n\t\t\t\t\t}\n\t\t\t\t\t\n\t\t\t\t\tb[0+0]= 123;\n\t\t\t\t}\n\n\t\t\t\tregresa (a[56]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\tvar float:hg,q[2],s;\n\t\t\t{\n\t\t\t\tlee(hg,s,q[1]);\n\t\t\t\thg = 100;\n\t\t\t\ts = 104;\n\n\t\t\t\ta[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;\n\n\t\t\t\tlee(a[2]);\n\t\t\t\ta[3] = 0 + a[2];\n\n\t\t\t\tholas(49,-2.25, 'a');\n\n\t\t\t\tdesde hg = 5 hasta 41 hacer\n\t\t\t\t{\n\t\t\t\t\thg = 7 + 4 * 47;\n\t\t\t\t}\n\t\t\t\tq[1]= 123;\n\t\t\t}\n\t".replace("\t", "")));
+    /* 	console.log(p.parse(`
+                programa XD;
+                var int: a[3],b[1],c; float: r;
+                %% AASDASD
+                
+                funcion bool getAll();
+                {
+                    a[1] = 1;
+                    regresa (a[1] == 5);
+                    escribe(a[0], a[1],a[2]);
+                }
+    
+                funcion int holas(int X, float y, char a123123);
+                    var char: x,y,z[12];
+                {
+                    holas(1,2.5,'c');
+                    a[4] = 123;
+                    b[1] = 2;
+                    c = 123 - 1;
+                    si (a[4] == b[4]) entonces {
+                        mientras(a[1] == 123 || a[3] > 3 && getAll()) haz
+                        {
+                            c[5] = -123.0123e5621 + a[4];
+                        }
+                        a[4] = a[3] * b[4];
+                    } sino {
+                        desde a[1] = 5 hasta 41 hacer
+                        {
+                            a[1] = 7 + 4 * 47;
+                        }
+                        
+                        b[0+0]= 123;
+                    }
+    
+                    regresa (a[56]);
+                }
+    
+                principal ()
+                var float:hg,q[2],s;
+                {
+                    lee(hg,s,q[1]);
+                    hg = 100;
+                    s = 104;
+    
+                    a[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;
+    
+                    lee(a[2]);
+                    a[3] = 0 + a[2];
+    
+                    holas(49,-2.25, 'a');
+    
+                    desde hg = 5 hasta 41 hacer
+                    {
+                        hg = 7 + 4 * 47;
+                    }
+                    q[1]= 123;
+                }
+        `.replace("\t", ""))); */
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[1] = 1;\n\t\t\t\tr[1] = 10.0;\n\t\t\t\tregresa (r[1] + v[1]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 69+holas();\n\t\t\t\ty = 420 + x;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();
     //p.yy.varTable.print();
     //p.yy.pileVals.print();
+    console.log("INICIA PROGRAMA");
+    console.log(p.yy.varTable);
+    var VM = new KappussinoVirtualMachine_1.KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
+    VM.resolve();
 })(PROY_FINAL = exports.PROY_FINAL || (exports.PROY_FINAL = {}));
