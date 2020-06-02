@@ -15,41 +15,41 @@ export namespace PROY_FINAL{
 		private _sizePerSection: number;
 		private _initialOffset: number;
 
-		requestInteger(){
+		requestInteger(size: number){
 			let num = this._integer;
-			this._integer++;
+			this._integer+=size;
 			if(this._integer >= this._sizePerSection){
 				throw "Error: Sobrecarga de memoria para enteros";
 			}
 			return this._initialOffset + num;
 		}
-		requestFloat(){
+		requestFloat(size: number){
 			let num = this._float;
-			this._float++;
+			this._float+=size;
 			if(this._float >= this._sizePerSection){
 				throw "Error: Sobrecarga de memoria para flotantes";
 			}
 			return this._initialOffset + num + this._sizePerSection;
 		}
-		requestChar(){
+		requestChar(size: number){
 			let num = this._char;
-			this._char++;
+			this._char+=size;
 			if(this._char >= this._sizePerSection){
 				throw "Error: Sobrecarga de memoria para caracteres";
 			}
 			return this._initialOffset + num + this._sizePerSection * 2;
 		}
-		requestBool(){
+		requestBool(size: number){
 			let num = this._bool;
-			this._bool++;
+			this._bool+=size;
 			if(this._bool >= this._sizePerSection){
 				throw "Error: Sobrecarga de memoria para boleanos";
 			}
 			return this._initialOffset + num + this._sizePerSection * 3;
 		}
-		requestVoid(){
+		requestVoid(size: number){
 			let num = this._void;
-			this._void++;
+			this._void+=size;
 			if(this._void >= this._sizePerSection){
 				throw "Error: Sobrecarga de memoria para void";
 			}
@@ -122,20 +122,20 @@ export namespace PROY_FINAL{
 			}
 		}
 
-		requestMemory(location: number, type: number): string{
+		requestMemory(location: number, type: number, size: number): string{
 			if(location == Memory.LOCAL_MEM){
-				return `*${this.getFromTypeAndChunk(this._local, type)}`;
+				return `*${this.getFromTypeAndChunk(this._local, type, size)}`;
 			}
 			else if(location == Memory.TEMP_MEM){
 				// + _localSize to set offset
-				return `*${this.getFromTypeAndChunk(this._temp, type) + this._localSize}`;
+				return `*${this.getFromTypeAndChunk(this._temp, type, size) + this._localSize}`;
 			}
 			else if(location == Memory.GLOBAL_MEM){
 				if(this._father != null){
-					return this._father.requestMemory(Memory.GLOBAL_MEM, type);
+					return this._father.requestMemory(Memory.GLOBAL_MEM, type, size);
 				}
 				else{
-					return `*${this.getFromTypeAndChunk(this._local, type)}`;
+					return `*${this.getFromTypeAndChunk(this._local, type, size)}`;
 				}
 			}
 			else{
@@ -144,18 +144,18 @@ export namespace PROY_FINAL{
 			}
 		}
 
-		private getFromTypeAndChunk(chunk: MemoryChunk, type: number){
+		private getFromTypeAndChunk(chunk: MemoryChunk, type: number, size: number){
 			switch (type) {
 				case Memory.INTEGER:
-					return chunk.requestInteger();
+					return chunk.requestInteger(size);
 				case Memory.FLOAT:
-					return chunk.requestFloat();
+					return chunk.requestFloat(size);
 				case Memory.CHAR:
-					return chunk.requestChar();
+					return chunk.requestChar(size);
 				case Memory.BOOL:
-					return chunk.requestBool();
+					return chunk.requestBool(size);
 				case Memory.VOID:
-					return chunk.requestVoid();
+					return chunk.requestVoid(size);
 				default:
 					throw "NOT DETECTED TYPE";
 			}
@@ -216,7 +216,7 @@ export namespace PROY_FINAL{
 		name: string,
 		type: string,
 		scope: string,
-		dimSize: string | undefined,
+		dimSize: string,
 		dir: any | HashMap<any> | undefined,
 	}
 
@@ -345,8 +345,8 @@ export namespace PROY_FINAL{
 			this.pileVals.pop();
 		}
 		addVariableToTable = (name: string, type: string, scope: string, dimSize: string | undefined) => {
-			if(!dimSize) dimSize = undefined;
-			this.varTable.set(name, {name, type, scope, dimSize, dir: this.actualMemory.requestMemory(Memory.LOCAL_MEM, this.getMemoryType(type))});
+			if(!dimSize) dimSize = "1";
+			this.varTable.set(name, {name, type, scope, dimSize, dir: this.actualMemory.requestMemory(Memory.LOCAL_MEM, this.getMemoryType(type), parseInt(dimSize))});
 		}
 		addVariablesToTable = (names: string[], type: string, scope: string, dimSizes: Array<string>) => {
 			for (let i = 0; i < names.length; i++) {
@@ -398,7 +398,7 @@ export namespace PROY_FINAL{
 			if(type != "void"){
 				let memory = 
 						this.actualMemory
-							.requestMemory(Memory.GLOBAL_MEM, this.getMemoryType(type));
+							.requestMemory(Memory.GLOBAL_MEM, this.getMemoryType(type), 1);
 
 				this.varTable.set(id, {name: id, dimSize: "1", 
 					dir: memory, scope: "global", type: type});
@@ -515,12 +515,12 @@ export namespace PROY_FINAL{
 			console.log("Variable to work: ", varr);
 			
 			let dir = varr.dir;
-			if(varr.dimSize != undefined){
+			if(varr.dimSize != "1"){
 				if(dim == undefined) throw "Error: Debes especificar la dimension de la variable " + varr.name;
 				let typeDim = this.pileType.pop();
 				if(!typeDim || (typeDim != "int" && typeDim != "float")) throw "Error: Valor de dimensión no es entero o flotante";
 
-				this.squats.push(new Tuple("VERFY", dim, this.constantsMemory.request("0"), varr.dimSize));
+				this.squats.push(new Tuple("VERFY", dim, this.constantsMemory.request("0"), this.constantsMemory.request(varr.dimSize) ));
 				console.log("PUSHED VERIFY");
 				
 				this.pushType("int");
@@ -566,7 +566,7 @@ export namespace PROY_FINAL{
 			let func = this.funcTable.get(id)!;
 			console.log("FUNC TYPE: ", func);
 			
-			let mem = this.actualMemory.requestMemory(Memory.GLOBAL_MEM, this.getMemoryType(func.type));
+			let mem = this.actualMemory.requestMemory(Memory.GLOBAL_MEM, this.getMemoryType(func.type), 1);
 			console.log(mem);
 			
 			console.log("HEEEERE");
@@ -615,7 +615,7 @@ export namespace PROY_FINAL{
 			
 			console.log("Types:");this.pileType.print();
 			if(!vAssign){
-				let memSpace = this.actualMemory.requestMemory(Memory.TEMP_MEM, this.getMemoryType(typeResult))?.toString();
+				let memSpace = this.actualMemory.requestMemory(Memory.TEMP_MEM, this.getMemoryType(typeResult), 1)?.toString();
 				console.log(`ADDED QUAD: ${operator}, ${leftOnd}, ${rightOnd}, ${memSpace}`);
 				this.squats.push(new Tuple(operator, leftOnd!, rightOnd!, memSpace));
 				this.pileVals.push(memSpace);
@@ -1274,8 +1274,8 @@ export namespace PROY_FINAL{
 			/**/"VG"				: [["var_dec TD", 'yy.addFromString($2, yy.state);'], ["", ""]],
 			"TD"				: [["var_type definer TDL1 e_stmt TDR", "$$ = [{t:$1, vs:$3}].concat($5);"]],
 			"TDR"				: [["TD", "$$ = $1"], ["", "$$ = undefined"]],
-			"TDL1"				: [["DIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
-			"TDL2"				: [["separ DIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
+			"TDL1"				: [["NODIMID TDL2", "$$ = [$1].concat($2); yy.pileType.pop();"]],
+			"TDL2"				: [["separ NODIMID TDL2", "$$ = [$2].concat($3); yy.pileType.pop();"], ["", '']],
 			"FD"				: [["FD_DEC_R R_FD_VG R_FD_B FD", ""], ["", ""]],
 			/**/"R_FD_VG"			: [["VG", "yy.setLocalVarNumber();"]],
 			/**/"FD_DEC_R"			: [["R_DEC_func s_par R_FD_PDL1 e_par e_stmt", "console.log('bbb', $3);yy.functionAddArgs($3);"]],
@@ -1321,6 +1321,10 @@ export namespace PROY_FINAL{
 			/**/"DIMID_"			: [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; '], ["", '']],
 			"DIMID_S_CORCH_R"	: [["s_corch", 'yy.pushCorchState();']],
 			"DIMID_E_CORCH_R"	: [["e_corch", 'yy.popCorchState();']],
+
+			"NODIMID"				: [["id NODIMID_", '$$ = {n:$1, d:$2};']],
+			/**/"NODIMID_"			: [["s_corch INTEGER e_corch", '$$ = $2; yy.pileType.push("int")'], ["", '']],
+
 			/**/"XP0"				: [["XP1 XP0_", "$$ = yy.pileVals.peek(); yy.endOperation();"]],
 			/**/"XP0_"				: [["R_OP_T4 XP1 XP0_", "$$ = $2; console.log('first', $1, $2, yy.pileVals.peek());"], ["", "console.log('end');"]],
 			"R_OP_T4"			: [["op_t4", "$$ = $1; yy.pushOp($1)"]],
@@ -1427,7 +1431,7 @@ export namespace PROY_FINAL{
 	`.replace("\t", ""))); */
 	console.log(p.parse(`
 			programa XD; 
-			var int: a[(1+2)-3],b[1+1],c; float: r;
+			var int: a[3],b[1],c; float: r;
 			%% AASDASD
 			
 			funcion bool getAll();
@@ -1438,7 +1442,7 @@ export namespace PROY_FINAL{
 			}
 
 			funcion int holas(int X, float y, char a123123);
-				var char: x,y,z[12+1];
+				var char: x,y,z[12];
 			{
 				holas(1,2.5,'c');
 				a[4] = 123;
@@ -1453,7 +1457,6 @@ export namespace PROY_FINAL{
 				} sino {
 					desde a[1] = 5 hasta 41 hacer
 					{
-						a[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;
 						a[1] = 7 + 4 * 47;
 					}
 					
@@ -1464,8 +1467,14 @@ export namespace PROY_FINAL{
 			}
 
 			principal ()
-			var float:hg,q;
+			var float:hg,q[2],s;
 			{
+				lee(hg,s,q[1]);
+				hg = 100;
+				s = 104;
+
+				a[4] = 1+1+1+1+1+1+1+1+1+1+1+1+1+1;
+
 				lee(a[2]);
 				a[3] = 0 + a[2];
 
@@ -1475,7 +1484,7 @@ export namespace PROY_FINAL{
 				{
 					hg = 7 + 4 * 47;
 				}
-				q= 123;
+				q[1]= 123;
 			}
 	`.replace("\t", "")));
 
