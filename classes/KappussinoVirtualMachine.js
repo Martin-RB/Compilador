@@ -1,20 +1,31 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var HashMap_1 = require("../DataStruc/HashMap");
+var Stack_1 = require("../DataStruc/Stack");
+var Context = /** @class */ (function () {
+    function Context(IP) {
+        if (IP === void 0) { IP = 0; }
+        this.Mem = new HashMap_1.HashMap();
+        this.IP = IP;
+    }
+    return Context;
+}());
+exports.Context = Context;
 var KapussinoVirtualMachine = /** @class */ (function () {
     function KapussinoVirtualMachine(quads, funcTable, constantMemory) {
         this._constantUnderLimit = 0;
         this._quads = quads;
         this._funcTable = funcTable;
-        this._mainMemory = new HashMap_1.HashMap();
         this._constantMemory = constantMemory;
         this._constantUperLimit = constantMemory.getMax();
+        this._ctxt = new Context();
+        this._funcPile = new Stack_1.Stack();
     }
     KapussinoVirtualMachine.prototype.resolve = function () {
-        var _this = this;
-        this._quads.forEach(function (el) {
-            _this.resolveIt(el);
-        });
+        while (this._ctxt.IP < this._quads.length) {
+            var el = this._quads[this._ctxt.IP];
+            this.resolveIt(el);
+        }
     };
     KapussinoVirtualMachine.prototype.isMemInsideKnstn = function (dir) {
         var memoryIndex = (dir);
@@ -29,14 +40,14 @@ var KapussinoVirtualMachine = /** @class */ (function () {
         var ond1;
         var ond2;
         var isNumber;
+        var next;
+        this._ctxt.IP += 1;
         switch (row.v1) {
             case "=":
                 origin = this.resolvePointer(row.v2);
                 destiny = this.resolvePointer(row.v4);
-                console.log("origin : ", origin);
-                console.log("saved on:", destiny);
                 data = this.getMemoryContent(origin);
-                this._mainMemory.set(destiny, data);
+                this._ctxt.Mem.set(destiny, data);
                 break;
             case "+":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2));
@@ -51,15 +62,12 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                 else {
                     data = ond1 + ond2;
                 }
-                console.log(ond1 + " + " + ond2);
-                console.log("sum result: ", data);
-                console.log("saved on:", destiny);
-                this._mainMemory.set(destiny, data);
+                this._ctxt.Mem.set(destiny, data);
                 break;
             case "-":
-                ond1 = this.getMemoryContent(row.v2);
-                ond2 = this.getMemoryContent(row.v3);
-                destiny = row.v4;
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3));
+                destiny = this.resolvePointer(row.v4);
                 isNumber = this.isNumber(ond1) &&
                     this.isNumber(ond2);
                 if (isNumber) {
@@ -69,12 +77,12 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                 else {
                     data = ond1 + ond2;
                 }
-                this._mainMemory.set(destiny, data);
+                this._ctxt.Mem.set(destiny, data);
                 break;
             case "*":
-                ond1 = this.getMemoryContent(row.v2);
-                ond2 = this.getMemoryContent(row.v3);
-                destiny = row.v4;
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3));
+                destiny = this.resolvePointer(row.v4);
                 isNumber = this.isNumber(ond1) &&
                     this.isNumber(ond2);
                 if (isNumber) {
@@ -82,14 +90,14 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                         this.getNumber(ond2);
                 }
                 else {
-                    throw "Error: Tipos incorrectos";
+                    data = ond1 + ond2;
                 }
-                this._mainMemory.set(destiny, data);
+                this._ctxt.Mem.set(destiny, data);
                 break;
             case "/":
-                ond1 = this.getMemoryContent(row.v2);
-                ond2 = this.getMemoryContent(row.v3);
-                destiny = row.v4;
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3));
+                destiny = this.resolvePointer(row.v4);
                 isNumber = this.isNumber(ond1) &&
                     this.isNumber(ond2);
                 if (isNumber) {
@@ -97,23 +105,75 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                         this.getNumber(ond2);
                 }
                 else {
-                    throw "Error: Tipos incorrectos";
+                    data = ond1 + ond2;
                 }
-                this._mainMemory.set(destiny, data);
+                this._ctxt.Mem.set(destiny, data);
+                break;
+            case ">":
+                ond1 = this.getMemoryContent(this.resolvePointer(row.v2));
+                ond2 = this.getMemoryContent(this.resolvePointer(row.v3));
+                destiny = this.resolvePointer(row.v4);
+                isNumber = this.isNumber(ond1) &&
+                    this.isNumber(ond2);
+                if (isNumber) {
+                    data = this.getNumber(ond1) >
+                        this.getNumber(ond2);
+                }
+                else {
+                    data = ond1 > ond2;
+                }
+                if (data) {
+                    data = "true";
+                }
+                else {
+                    data = "false";
+                }
+                console.log(">>> " + ond1 + " > " + ond2 + " = " + data);
+                this._ctxt.Mem.set(destiny, data);
                 break;
             case "WRITE":
-                var dat = this._mainMemory.get(row.v4);
+                var dat = this.getMemoryContent(this.resolvePointer(row.v4));
                 console.log(dat);
+                break;
+            case "JUMP":
+                next = this.getInt(row.v4);
+                if (!next)
+                    throw "Error: JUMP fuera de los limites";
+                this._ctxt.IP = next;
+                break;
+            case "JUMPF":
+                if (this.getMemoryContent(this.resolvePointer(row.v2))
+                    == "false") {
+                    next = this.getInt(row.v4);
+                    if (!next)
+                        throw "Error: JUMP fuera de los limites";
+                    this._ctxt.IP = next;
+                }
+                break;
+            case "GOSUB":
+                this._funcPile.push(this._funcTable.get(row.v4).id);
+                var ctxt = new Context(this._funcTable.get(row.v4).ip);
+                ctxt.SonCtxt = this._ctxt;
+                this._ctxt = ctxt;
+                break;
+            case "ENDFUNCTION":
+                var pile = this._funcPile.pop();
+                if (pile) {
+                    var func = this._funcTable.get(pile);
+                    var dir = func.value;
+                    this._ctxt.SonCtxt.Mem.set(dir, this._ctxt.Mem.get(dir));
+                }
+                if (this._ctxt.SonCtxt) {
+                    this._ctxt = this._ctxt.SonCtxt;
+                }
                 break;
             default:
                 break;
         }
-        console.log("ENDED: " + row.v1 + "\n");
     };
     KapussinoVirtualMachine.prototype.resolvePointer = function (dir) {
         if (dir[0] == "*") {
-            console.log(this._mainMemory.get(dir.slice(1)));
-            return this._mainMemory.get(dir.slice(1));
+            return this._ctxt.Mem.get(dir.slice(1));
         }
         return dir;
     };
@@ -174,7 +234,7 @@ var KapussinoVirtualMachine = /** @class */ (function () {
             data = this._constantMemory.getFromDir(dir);
         }
         else {
-            data = this._mainMemory.get(dir);
+            data = this._ctxt.Mem.get(dir);
         }
         return data;
     };

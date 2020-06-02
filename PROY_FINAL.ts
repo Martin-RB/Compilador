@@ -1444,15 +1444,20 @@ export namespace PROY_FINAL{
 			funcion float holas();
 			var float: v[2], r[2];
 			{
-				v[1] = 1;
+				v[1] = 1 * (9);
+				si(v[1] > 0) entonces{
+					escribe (v[1]);
+				}
+
 				r[1] = 10.0;
-				regresa (r[1] + v[1]);
+				r[0] = 4+1;
+				regresa (r[1] + v[1] + r[0]);
 			}
 
 			principal ()
 			{
-				x = 69+holas();
-				y = 420 + x;
+				x = 1+1 + holas();
+				y = 1 + x;
 				escribe(y);
 			}
 	`.replace("\t", "")));
@@ -1466,8 +1471,6 @@ export namespace PROY_FINAL{
 	//p.yy.pileVals.print();
 
 console.log("INICIA PROGRAMA");
-
-	console.log(p.yy.varTable);
 	
 
 	let VM = new KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);

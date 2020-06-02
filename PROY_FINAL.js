@@ -1328,14 +1328,13 @@ var PROY_FINAL;
                     q[1]= 123;
                 }
         `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[1] = 1;\n\t\t\t\tr[1] = 10.0;\n\t\t\t\tregresa (r[1] + v[1]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 69+holas();\n\t\t\t\ty = 420 + x;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[1] = 1 * (9);\n\t\t\t\tsi(v[1] > 0) entonces{\n\t\t\t\t\tescribe (v[1]);\n\t\t\t\t}\n\n\t\t\t\tr[1] = 10.0;\n\t\t\t\tr[0] = 4+1;\n\t\t\t\tregresa (r[1] + v[1] + r[0]);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 1+1 + holas();\n\t\t\t\ty = 1 + x;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();
     //p.yy.varTable.print();
     //p.yy.pileVals.print();
     console.log("INICIA PROGRAMA");
-    console.log(p.yy.varTable);
     var VM = new KappussinoVirtualMachine_1.KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
     VM.resolve();
 })(PROY_FINAL = exports.PROY_FINAL || (exports.PROY_FINAL = {}));
