@@ -3,6 +3,7 @@ import { HashMap } from "../DataStruc/HashMap";
 export 	interface IArg{
     name: string;
     type: string;
+    dir: string;
 }
 
 export 	interface IFuncTableRow{

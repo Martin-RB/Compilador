@@ -3,9 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var HashMap_1 = require("../DataStruc/HashMap");
 var Stack_1 = require("../DataStruc/Stack");
 var Context = /** @class */ (function () {
-    function Context(IP) {
+    function Context(IP, mem) {
         if (IP === void 0) { IP = 0; }
-        this.Mem = new HashMap_1.HashMap();
+        if (mem === void 0) { mem = new HashMap_1.HashMap(); }
+        this.Mem = mem;
         this.IP = IP;
     }
     return Context;
@@ -14,18 +15,19 @@ exports.Context = Context;
 var KapussinoVirtualMachine = /** @class */ (function () {
     function KapussinoVirtualMachine(quads, funcTable, constantMemory) {
         this._constantUnderLimit = 0;
+        this._isDebug = false;
         this._quads = quads;
         this._funcTable = funcTable;
         this._constantMemory = constantMemory;
         this._constantUperLimit = constantMemory.getMax();
         this._ctxt = new Context();
         this._funcPile = new Stack_1.Stack();
+        this._contextPile = new Stack_1.Stack();
     }
     KapussinoVirtualMachine.prototype.resolve = function () {
         var _this = this;
         if (this._ctxt.IP < this._quads.length)
             setTimeout(function () {
-                console.log("IP:", _this._ctxt.IP);
                 ;
                 _this.resolveIter(_this._ctxt.IP);
                 _this.resolve();
@@ -49,19 +51,19 @@ var KapussinoVirtualMachine = /** @class */ (function () {
         var ond2;
         var isNumber;
         var next;
+        this.debug("IP:", this._ctxt.IP);
         this._ctxt.IP += 1;
         switch (row.v1) {
             case "=":
                 origin = this.resolvePointer(row.v2);
                 destiny = this.resolvePointer(row.v4);
                 data = this.getMemoryContent(origin);
-                console.log(">>> " + destiny + ":" + row.v4 + " = " + data);
+                this.debug(">>> " + destiny + " = " + data + ": " + origin);
                 this._ctxt.Mem.set(destiny, data);
                 break;
             case "+":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2));
                 ond2 = this.getMemoryContent(this.resolvePointer(row.v3));
-                console.log(this.resolvePointer(row.v2));
                 destiny = this.resolvePointer(row.v4);
                 isNumber = this.isNumber(ond1) &&
                     this.isNumber(ond2);
@@ -72,9 +74,9 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                 else {
                     data = ond1 + ond2;
                 }
-                console.log(">>> " + ond1 + ": " + this.resolvePointer(row.v2) + " + " + ond2 + ": " + this.resolvePointer(row.v3) + " = " + data + ":" + destiny);
+                this.debug(">>> " + ond1 + ": " + this.resolvePointer(row.v2) + " + " + ond2 + ": " + this.resolvePointer(row.v3) + " = " + data + ":" + destiny);
                 this._ctxt.Mem.set(destiny, data);
-                console.log(">>> " + data);
+                this.debug(">>> " + data);
                 break;
             case "-":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2));
@@ -203,7 +205,7 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                 else {
                     data = "false";
                 }
-                console.log(">>> " + ond1 + ": " + this.resolvePointer(row.v2) + " <= " + ond2 + ": " + this.resolvePointer(row.v3) + " = " + data + ":" + destiny);
+                this.debug(">>> " + ond1 + ": " + this.resolvePointer(row.v2) + " <= " + ond2 + ": " + this.resolvePointer(row.v3) + " = " + data + ":" + destiny);
                 this._ctxt.Mem.set(destiny, data);
                 break;
             case "==":
@@ -250,11 +252,11 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                 break;
             case "WRITE":
                 var dat = this.getMemoryContent(this.resolvePointer(row.v4));
-                console.log(dat);
+                console.log("===PROGRAM SAYS", dat);
                 break;
             case "JUMP":
                 next = this.getInt(row.v4);
-                console.log(">>> DETECTADO JUMP. SALTANDO A " + next);
+                this.debug(">>> DETECTADO JUMP. SALTANDO A " + next);
                 if (!next)
                     throw "Error: JUMP fuera de los limites";
                 this._ctxt.IP = next;
@@ -263,25 +265,29 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                 if (this.getMemoryContent(this.resolvePointer(row.v2))
                     == "false") {
                     next = this.getInt(row.v4);
-                    console.log(">>> DETECTADO FALSE. SALTANDO A " + next);
+                    this.debug(">>> DETECTADO FALSE. SALTANDO A " + next);
                     if (!next)
                         throw "Error: JUMP fuera de los limites";
                     this._ctxt.IP = next;
                 }
                 break;
-            case "GOSUB":
+            case "ERA":
                 this._funcPile.push(this._funcTable.get(row.v4).id);
-                console.log(this._funcTable.get(row.v4));
-                var ctxt = new Context(this._funcTable.get(row.v4).ip);
-                ctxt.SonCtxt = this._ctxt;
-                this._ctxt = ctxt;
+                this._contextPile.push(new Context(this._funcTable.get(row.v4).ip));
+                break;
+            case "PARAM":
+                var func = this._funcTable.get(this._funcPile.peek());
+                this._contextPile.peek().Mem.set(func.args[parseInt(row.v4)].dir, this.getMemoryContent(this.resolvePointer(row.v2)));
+                break;
+            case "GOSUB":
+                this._contextPile.peek().SonCtxt = this._ctxt;
+                this._ctxt = this._contextPile.pop();
                 break;
             case "ENDFUNCTION":
                 var pile = this._funcPile.pop();
                 if (pile) {
-                    var func = this._funcTable.get(pile);
-                    console.log(func);
-                    var dir = func.value;
+                    var func_1 = this._funcTable.get(pile);
+                    var dir = func_1.value;
                     this._ctxt.SonCtxt.Mem.set(dir, this._ctxt.Mem.get(dir));
                 }
                 if (this._ctxt.SonCtxt) {
@@ -358,6 +364,14 @@ var KapussinoVirtualMachine = /** @class */ (function () {
             data = this._ctxt.Mem.get(dir);
         }
         return data;
+    };
+    KapussinoVirtualMachine.prototype.debug = function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        if (this._isDebug)
+            console.log.apply(console, args);
     };
     return KapussinoVirtualMachine;
 }());

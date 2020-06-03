@@ -280,8 +280,9 @@ var PROY_FINAL;
                 r.args = args;
                 for (var i = 0; i < r.args.length; i++) {
                     var arg = r.args[i];
+                    arg.dir = _this.actualMemory.requestMemory(Memory.LOCAL_MEM, _this.getMemoryType(arg.type), 1);
                     var variable = { name: arg.name, dimSize: "1",
-                        dir: undefined, scope: "local", type: arg.type };
+                        dir: arg.dir, scope: "local", type: arg.type };
                     _this.varTable.set(arg.name, variable);
                 }
             };
@@ -1330,13 +1331,14 @@ var PROY_FINAL;
                     q[1]= 123;
                 }
         `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y,z;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[0] = 0;\n\t\t\t\tv[1] = 1;\n\t\t\t\tr[1] = 1;\n\n\t\t\t\tdesde v[0] = 0 hasta 9 hacer\n\t\t\t\t{\n\t\t\t\t\tr[1] = r[1] + 1;\n\t\t\t\t}\n\n\t\t\t\tescribe(r[1]);\n\t\t\t\tescribe(v[0]);\n\n\t\t\t\tsi(v[1] > 9) entonces{\n\t\t\t\t\tescribe (v[1]);\n\t\t\t\t}\n\t\t\t\tsino{\n\t\t\t\t\tescribe (r[1]);\n\t\t\t\t}\n\n\t\t\t\tregresa (r[1] + v[1] + r[1]);\n\t\t\t}\n\n\t\t\tfuncion float fibby(int h);\n\t\t\t{\n\t\t\t\tregresa (1.0);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 1+1 + holas();\n\t\t\t\tz = fibby(1);\n\t\t\t\ty = 1 + x;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y,z;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[0] = 0;\n\t\t\t\tv[1] = 1;\n\t\t\t\tr[1] = 1;\n\n\t\t\t\tdesde v[0] = 0 hasta 9 hacer\n\t\t\t\t{\n\t\t\t\t\t\n\t\t\t\t}\n\n\t\t\t\t\n\n\t\t\t\tsi(v[1] > 9) entonces{\n\t\t\t\t\t\n\t\t\t\t}\n\t\t\t\tsino{\n\t\t\t\t\t\n\t\t\t\t}\n\n\t\t\t\tregresa (r[1] + v[1] + r[1]);\n\t\t\t}\n\n\t\t\tfuncion float fibby(int h);\n\t\t\t{\n\t\t\t\tsi (h != 0) entonces\n\t\t\t\t{\n\t\t\t\t\tregresa (1);\n\t\t\t\t}\n\t\t\t\tregresa fibby(h - 1);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 1+1 + holas();\n\t\t\t\tz = fibby(2);\n\t\t\t\tescribe('z', z);\n\t\t\t\tescribe('x', x);\n\t\t\t\ty = 1 + x * z;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();
     //p.yy.varTable.print();
     //p.yy.pileVals.print();
     console.log("INICIA PROGRAMA");
+    console.log(p.yy.funcTable);
     var VM = new KappussinoVirtualMachine_1.KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
     VM.resolve();
 })(PROY_FINAL = exports.PROY_FINAL || (exports.PROY_FINAL = {}));

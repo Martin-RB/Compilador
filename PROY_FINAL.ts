@@ -313,8 +313,9 @@ export namespace PROY_FINAL{
 			r.args = args;
 			for (let i = 0; i < r.args.length; i++) {
 				const arg = r.args[i];
+				arg.dir = this.actualMemory.requestMemory(Memory.LOCAL_MEM, this.getMemoryType(arg.type), 1);
 				let variable: IVarTableRow = {name: arg.name, dimSize: "1", 
-					dir: undefined, scope: "local", type: arg.type};
+					dir: arg.dir, scope: "local", type: arg.type};
 				this.varTable.set(arg.name, variable);
 			}
 		}
@@ -358,7 +359,7 @@ export namespace PROY_FINAL{
 			let argNumber = actualFunc.args.length;
 			this.funcTable.get(this.actualFunction)!.numLocalVars = 
 						declaredVars - argNumber;
-			
+
 			this.funcTable.get(this.actualFunction)!.ip = this.squats.length;
 			
 		}
@@ -1452,17 +1453,16 @@ export namespace PROY_FINAL{
 
 				desde v[0] = 0 hasta 9 hacer
 				{
-					r[1] = r[1] + 1;
+					
 				}
 
-				escribe(r[1]);
-				escribe(v[0]);
+				
 
 				si(v[1] > 9) entonces{
-					escribe (v[1]);
+					
 				}
 				sino{
-					escribe (r[1]);
+					
 				}
 
 				regresa (r[1] + v[1] + r[1]);
@@ -1470,14 +1470,20 @@ export namespace PROY_FINAL{
 
 			funcion float fibby(int h);
 			{
-				regresa (1.0);
+				si (h != 0) entonces
+				{
+					regresa (1);
+				}
+				regresa fibby(h - 1);
 			}
 
 			principal ()
 			{
 				x = 1+1 + holas();
-				z = fibby(1);
-				y = 1 + x;
+				z = fibby(2);
+				escribe('z', z);
+				escribe('x', x);
+				y = 1 + x * z;
 				escribe(y);
 			}
 	`.replace("\t", "")));
@@ -1492,6 +1498,7 @@ export namespace PROY_FINAL{
 
 console.log("INICIA PROGRAMA");
 	
+console.log(p.yy.funcTable)
 
 	let VM = new KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
 	VM.resolve();

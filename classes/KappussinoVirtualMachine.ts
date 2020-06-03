@@ -1,16 +1,17 @@
 import { Tuple } from "../DataStruc/Tuple";
-import { FuncTable } from "./FuncTable";
+import { FuncTable, IFuncTableRow } from "./FuncTable";
 import { HashMap } from "../DataStruc/HashMap";
 import { MortalKonstants } from "./MortalKonstants";
 import { Stack } from "../DataStruc/Stack";
+import { Hash } from "crypto";
 
 export class Context{
     public Mem: HashMap<any>;
     public IP: number;
     public SonCtxt: Context | undefined;
 
-    constructor(IP: number = 0){
-        this.Mem = new HashMap<any>();
+    constructor(IP: number = 0, mem: HashMap<any> = new HashMap<any>()){
+        this.Mem = mem;
         this.IP = IP;
     }
 }
@@ -24,6 +25,8 @@ export class KapussinoVirtualMachine{
     private _constantUnderLimit: number = 0;
     private _constantUperLimit: number;
     private _ctxt: Context;
+    private _contextPile: Stack<Context>;
+    private _isDebug: boolean = false;
 
     constructor(quads: Array<Tuple<string, string, string, string>>, funcTable: FuncTable, constantMemory: MortalKonstants){
         this._quads = quads;
@@ -32,12 +35,13 @@ export class KapussinoVirtualMachine{
         this._constantUperLimit = constantMemory.getMax();
         this._ctxt = new Context();
         this._funcPile = new Stack<string>();
+        this._contextPile = new Stack<Context>();
         
     }
 
     resolve(){
         if(this._ctxt.IP < this._quads.length)
-            setTimeout(() => {console.log("IP:" , this._ctxt.IP);
+            setTimeout(() => {
             ; this.resolveIter(this._ctxt.IP); this.resolve();}, 10);
     }
 
@@ -62,6 +66,9 @@ export class KapussinoVirtualMachine{
         let ond2: string;
         let isNumber: boolean;
         let next: number | undefined;
+
+        this.debug("IP:" , this._ctxt.IP);
+
         this._ctxt.IP += 1;
         
 
@@ -71,13 +78,12 @@ export class KapussinoVirtualMachine{
                 destiny = this.resolvePointer(row.v4!);                
                 
                 data = this.getMemoryContent(origin);
-                console.log(`>>> ${destiny}:${row.v4!} = ${data}`);
+                this.debug(`>>> ${destiny} = ${data}: ${origin}`);
                 this._ctxt.Mem.set(destiny, data);                
                 break;
             case "+":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
                 ond2 = this.getMemoryContent(this.resolvePointer(row.v3!));
-                console.log(this.resolvePointer(row.v2!));
                 
                 destiny = this.resolvePointer(row.v4!);
                 
@@ -92,10 +98,10 @@ export class KapussinoVirtualMachine{
                     data = ond1 + ond2;
                 }
 
-                console.log(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} + ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} + ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
 
                 this._ctxt.Mem.set(destiny, data);
-                console.log(`>>> ${data}`);
+                this.debug(`>>> ${data}`);
                 break;
             case "-":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -249,7 +255,7 @@ export class KapussinoVirtualMachine{
                     data = "false";
                 }
 
-                console.log(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} <= ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} <= ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
                 
 
                 this._ctxt.Mem.set(destiny, data);
@@ -306,12 +312,12 @@ export class KapussinoVirtualMachine{
                 break;
             case "WRITE":
                 let dat = this.getMemoryContent(this.resolvePointer(row.v4!));
-                console.log(dat);
+                console.log("===PROGRAM SAYS", dat);
                 break;
 
             case "JUMP":
                 next = this.getInt(row.v4!);
-                console.log(">>> DETECTADO JUMP. SALTANDO A " + next);
+                this.debug(">>> DETECTADO JUMP. SALTANDO A " + next);
                 if(!next) throw "Error: JUMP fuera de los limites";
                 this._ctxt.IP = next;
                 break;
@@ -323,26 +329,30 @@ export class KapussinoVirtualMachine{
                 {                    
                     
                     next = this.getInt(row.v4!);
-                    console.log(">>> DETECTADO FALSE. SALTANDO A " + next);
+                    this.debug(">>> DETECTADO FALSE. SALTANDO A " + next);
                     if(!next) throw "Error: JUMP fuera de los limites";
                     this._ctxt.IP = next;
                 }
                 break;
-            case "GOSUB":
-                this._funcPile.push(this._funcTable.get(row.v4!)!.id);
-                console.log(this._funcTable.get(row.v4!));
-                
+            case "ERA":
+                this._funcPile.push(this._funcTable.get(row.v4!)!.id);                
+                this._contextPile.push(new Context(this._funcTable.get(row.v4!)!.ip));
 
-                let ctxt = new Context(this._funcTable.get(row.v4!)!.ip);
-                ctxt.SonCtxt = this._ctxt;
-                this._ctxt = ctxt;
+                break;
+            case "PARAM":
+                let func = this._funcTable.get(this._funcPile.peek()!)!;
+                this._contextPile.peek()!.Mem.set(func.args[parseInt(row.v4!)].dir!, this.getMemoryContent(this.resolvePointer(row.v2!));
+                break;
+            case "GOSUB":
+
+                this._contextPile.peek()!.SonCtxt = this._ctxt;
+                this._ctxt = this._contextPile.pop()!;
                 break;
             case "ENDFUNCTION":
 
                 let pile = this._funcPile.pop();
                 if(pile){
                     let func = this._funcTable.get(pile);
-                    console.log(func);
                     
                     let dir = func!.value!;
                     this._ctxt.SonCtxt!.Mem.set(dir, this._ctxt.Mem.get(dir));
@@ -433,5 +443,11 @@ export class KapussinoVirtualMachine{
             data = this._ctxt.Mem.get(dir);
         }
         return data;
+    }
+
+    private debug(...args: Array<any>){
+        if(this._isDebug)
+            console.log(...args);
+        
     }
 }
