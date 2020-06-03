@@ -347,7 +347,7 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                         return [3 /*break*/, 22];
                     case 12:
                         dat = this.getMemoryContent(this.resolvePointer(row.v4));
-                        console.log("===PROGRAM SAYS", dat);
+                        console.log(">", dat);
                         return [3 /*break*/, 22];
                     case 13:
                         toWrite = this.resolvePointer(row.v4);
@@ -508,7 +508,7 @@ var KapussinoVirtualMachine = /** @class */ (function () {
     };
     KapussinoVirtualMachine.prototype.readLine = function () {
         return new Promise(function (res) {
-            rl.question("", function (answ) {
+            rl.question("<", function (answ) {
                 res(answ);
             });
         });

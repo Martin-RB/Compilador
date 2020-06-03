@@ -972,7 +972,6 @@ var PROY_FINAL;
             if (vAssign === void 0) { vAssign = false; }
             var _a, _b, _c;
             this.pileOps.pop();
-            this.pileVals.print();
             var operator = op;
             var rightOnd = this.pileVals.pop();
             var leftOnd = this.pileVals.pop();
@@ -1096,8 +1095,8 @@ var PROY_FINAL;
             "ASI_DIMID_R": [["DIMID", 'yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n));']],
             "ASI_EQ_R": [["eq", 'yy.pushOp($1)']],
             /**/ "ASI_": [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
-            "RET": [["RET_ s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); yy.pileType.print();"]],
-            "RET_": [["ret", "yy.pileType.print();"]],
+            "RET": [["RET_ s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); "]],
+            "RET_": [["ret", ""]],
             "REE": [["read s_par REE_ e_par", "yy.setReadProc($3);"]],
             /**/ "REE_": [["DIMID REE__", "$$ = [yy.getVarSavedMemory($1.n, $1.d)].concat($2);"]],
             "REE__": [["separ DIMID REE__", "$$ = [yy.getVarSavedMemory($2.n, $2.d)].concat($3);"], ["", "$$ = [];"]],
@@ -1117,7 +1116,7 @@ var PROY_FINAL;
             /**/ "COND_XP0_R": [["XP0", "yy.addJumpF($1); yy.pileVals.pop(); yy.pileType.pop()"]],
             /**/ "COND_B_R": [["B", "yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true);"]],
             "NCOND": [["from NCOND_P1_R dof B", "yy.fromToSum(); yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true)"]],
-            /**/ "NCOND_P1_R": [["ASI to XP0", "yy.pileFromTo.push($1); yy.pileFromToType.push(yy.pileType.peek()); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop()); yy.pileType.print();"]],
+            /**/ "NCOND_P1_R": [["ASI to XP0", "yy.pileFromTo.push($1); yy.pileFromToType.push(yy.pileType.peek()); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop()); "]],
             "DIMID": [["id DIMID_", '$$ = {n:$1, d:$2};']],
             /**/ "DIMID_": [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; ;'], ["", '']],
             "DIMID_S_CORCH_R": [["s_corch", 'yy.pushCorchState();']],
@@ -1347,7 +1346,6 @@ var PROY_FINAL;
     //p.yy.varTable.print();
     //p.yy.pileVals.print();
     console.log("INICIA PROGRAMA");
-    console.log(p.yy.funcTable);
     var VM = new KappussinoVirtualMachine_1.KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
     VM.resolve();
 })(PROY_FINAL = exports.PROY_FINAL || (exports.PROY_FINAL = {}));

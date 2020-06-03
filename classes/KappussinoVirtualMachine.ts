@@ -328,7 +328,7 @@ export class KapussinoVirtualMachine{
                 break;
             case "WRITE":
                 let dat = this.getMemoryContent(this.resolvePointer(row.v4!));
-                console.log("===PROGRAM SAYS", dat);
+                console.log(">", dat);
                 break;
             case "READ":
                 let toWrite = this.resolvePointer(row.v4!);
@@ -502,7 +502,7 @@ export class KapussinoVirtualMachine{
 
     private readLine(): Promise<string>{
         return new Promise((res) => {
-            rl.question("", (answ) => {
+            rl.question("<", (answ) => {
                 res(answ);
             })
         });
