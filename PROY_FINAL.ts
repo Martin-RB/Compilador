@@ -229,11 +229,6 @@ export namespace PROY_FINAL{
 	}
 
 
-	interface DIMID{
-		n: string;
-		d?: string;
-	}
-
 	class YYKontext{
 		state: string = `global`;
 		squats: Array<Tuple<string, string, string, string>> = new Array<Tuple<string, string, string, string>>();
@@ -1494,14 +1489,15 @@ export namespace PROY_FINAL{
 				escribe(y);
 			}
 	`.replace("\t", ""))); */
-	console.log(p.parse(`
+
+	let program = `
 			programa foreveralone; 
 			var
 				int: i,j, p;
 				float: Arreglo[10], OtroArreglo[10];
 				float: valor;
 
-			funcion float fact (float j);
+			funcion float fibby (float j);
 			var int: i; float: v;
 			{
 				i = j + (p-j*2+j);
@@ -1511,30 +1507,29 @@ export namespace PROY_FINAL{
 				}
 				sino
 				{
-					regresa(j * fact(j-1));
-
-
-				}
-			}
-
-			funcion void inicia (float y);
-			var int: x;
-			{
-				valor = 1;
-				x = 0;
-				mientras(x < 11) haz
-				{
-					Arreglo[x] = y * x;
-					x = x + 1;
+					regresa(j * fibby(j-1));
 				}
 			}
 
 			principal ()
 			{
 				lee(valor);
-				escribe(fact(valor));				
+				escribe(fibby(valor));
+				escribe(1*(6+4/2)/4);
 			}
-	`.replace("\t", "")));
+	`;
+
+/* 	var lexer = p.lexer, token;
+	lexer.setInput(program);
+	while (!lexer.done) {
+		token = lexer.lex();
+		if (token in p.terminals_) {
+			token = p.terminals_[token];
+		}
+		console.log('<' + token + ', ' + lexer.yytext + '>')
+	} */
+	
+	console.log(p.parse(program.replace("\t", "")));
 
 	console.log(p.yy.printQuads());
 	p.yy.varTable.print()
