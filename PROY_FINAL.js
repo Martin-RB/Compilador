@@ -250,6 +250,19 @@ var PROY_FINAL;
                 _this.pileOps.pop();
                 _this.pileVals.pop();
             };
+            this.pushFuncState = function () {
+                _this.pileOps.push(";F;");
+                _this.pileVals.push(";F;");
+            };
+            this.popFuncState = function () {
+                var ops = _this.pileOps.peek() != ";F;";
+                var vals = _this.pileVals.peek() != ";F;";
+                if (ops || vals) {
+                    throw new Error("FUNCTION ARG ENDED UNEXPECTEDLY");
+                }
+                _this.pileOps.pop();
+                _this.pileVals.pop();
+            };
             this.pushParthState = function () {
                 _this.pileOps.push(";P;");
                 _this.pileVals.push(";P;");
@@ -338,6 +351,7 @@ var PROY_FINAL;
                     _this.varTable = fatherVarTable;
                 else
                     throw "INNER: NO FATHER VAR TABLE";
+                _this.squats.push(new Tuple_1.Tuple("ENDFUNCTION", "", "", ""));
             };
             /* 		getLastValue = () => {
                         return this.pileVals.pop();
@@ -1093,7 +1107,7 @@ var PROY_FINAL;
                 ["[0-9]+", "return 'integer';"],
                 ["(\\*|\\/)", "return 'op_t1';"],
                 ["(\\&&|\\|\\|)", "return 'op_t4';"],
-                ["(\\!\\=|\\=\\=|\\<|\\>|\\>\\=|\\<\\=)", "return 'op_t3';"],
+                ["(\\!\\=|\\=\\=|\\>\\=|\\<\\=|\\<|\\>)", "return 'op_t3';"],
                 ["\\=", "return 'eq';"],
                 ["[a-zA-Z_$]\\w*", "return 'id';"],
                 ["\\s+", ""],
@@ -1124,7 +1138,9 @@ var PROY_FINAL;
             "PDL2": [["separ R_PDL1_type PDL2", "$$ = [$2].concat($3)"], ["", "$$ = [];"]],
             "ST": ["STDEF ST", ""],
             /**/ "STDEF": [["ASI e_stmt", "yy.pileType.pop();"], ["CALL e_stmt", ""], ["RET e_stmt", ""], ["REE e_stmt", ""], ["WRT e_stmt", ""], ["DEC", ""], ["REP", ""]],
-            "CALL": [["R_CALL_ID s_par CALA e_par", "$$ = yy.callFunction_end();"]],
+            "CALL": [["R_CALL_ID R_CALL_S_PAR CALA R_CALL_E_PAR", "$$ = yy.callFunction_end();"]],
+            "R_CALL_S_PAR": [["s_par", "yy.pushFuncState();"]],
+            "R_CALL_E_PAR": [["e_par", "yy.popFuncState();"]],
             /**/ "R_CALL_ID": [["id", "yy.callFunction_start($1);"]],
             "CALA": [["R_CALA_XP0 CALA2", "yy.pileType.pop(); console.log('Types:');yy.pileType.print();"], ["", ""]],
             "CALA2": [["separ R_CALA_XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
@@ -1369,7 +1385,7 @@ var PROY_FINAL;
                     escribe(y);
                 }
         `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma foreveralone; \n\t\t\tvar\n\t\t\t\tint: i,j, p;\n\t\t\t\tfloat: Arreglo[10], OtroArreglo[10];\n\t\t\t\tfloat: valor;\n\n\t\t\tfuncion float fact (float j);\n\t\t\tvar int: i;\n\t\t\t{\n\t\t\t\ti = j + (p-j*2+j);\n\t\t\t\tsi (j == 1) entonces\n\t\t\t\t{\n\t\t\t\t\tregresa(j);\n\t\t\t\t}\n\t\t\t\tsino\n\t\t\t\t{\n\t\t\t\t\tregresa (j * fact(j-1));\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tfuncion void inicia (float y);\n\t\t\tvar int: x;\n\t\t\t{\n\t\t\t\tx = 0;\n\t\t\t\tmientras(x < 11) haz\n\t\t\t\t{\n\t\t\t\t\tArreglo[x] = y * x;\n\t\t\t\t\tx = x + 1;\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tlee(p);\n\t\t\t\tj = p*2;\n\t\t\t\tinicia(p*j-5);\n\t\t\t\tdesde i=0 hasta 9 hacer\n\t\t\t\t{\n\t\t\t\t\tArreglo[i] = Arreglo[i] * fact(Arreglo[i] - p);\n\t\t\t\t}\n\n\t\t\t}\n\t".replace("\t", "")));
+    console.log(p.parse("\n\t\t\tprograma foreveralone; \n\t\t\tvar\n\t\t\t\tint: i,j, p;\n\t\t\t\tfloat: Arreglo[10], OtroArreglo[10];\n\t\t\t\tfloat: valor;\n\n\t\t\tfuncion float fact (float j);\n\t\t\tvar int: i; float: v;\n\t\t\t{\n\t\t\t\ti = j + (p-j*2+j);\n\t\t\t\tsi (j <= 1) entonces\n\t\t\t\t{\n\t\t\t\t\tregresa(j);\n\t\t\t\t}\n\t\t\t\tsino\n\t\t\t\t{\n\t\t\t\t\tregresa(j * fact(j-1));\n\n\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tfuncion void inicia (float y);\n\t\t\tvar int: x;\n\t\t\t{\n\t\t\t\tvalor = 1;\n\t\t\t\tx = 0;\n\t\t\t\tmientras(x < 11) haz\n\t\t\t\t{\n\t\t\t\t\tArreglo[x] = y * x;\n\t\t\t\t\tx = x + 1;\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tlee(valor);\n\t\t\t\tescribe(fact(valor));\t\t\t\t\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();

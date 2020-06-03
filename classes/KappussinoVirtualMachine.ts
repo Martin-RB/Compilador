@@ -3,15 +3,23 @@ import { FuncTable, IFuncTableRow } from "./FuncTable";
 import { HashMap } from "../DataStruc/HashMap";
 import { MortalKonstants } from "./MortalKonstants";
 import { Stack } from "../DataStruc/Stack";
+import {createInterface} from "readline";
+
+const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
 export class Context{
     public Mem: HashMap<any>;
     public IP: number;
     public SonCtxt: Context | undefined;
+    public FunctionName: string;
 
     constructor(IP: number = 0, mem: HashMap<any> = new HashMap<any>()){
         this.Mem = mem;
         this.IP = IP;
+        this.FunctionName = "main";
     }
 }
 
@@ -25,7 +33,8 @@ export class KapussinoVirtualMachine{
     private _constantUperLimit: number;
     private _ctxt: Context;
     private _contextPile: Stack<Context>;
-    private _isDebug: boolean = true;
+    private _isDebug: boolean = false;
+    private _functionKontext = 20000;
 
     constructor(quads: Array<Tuple<string, string, string, string>>, funcTable: FuncTable, constantMemory: MortalKonstants){
         this._quads = quads;
@@ -38,15 +47,22 @@ export class KapussinoVirtualMachine{
         
     }
 
-    resolve(){
-        if(this._ctxt.IP < this._quads.length)
-            setTimeout(() => {
-            ; this.resolveIter(this._ctxt.IP); this.resolve();}, 1);
+    async resolve(){
+        while(this._ctxt.IP < this._quads.length){
+            await this.resolveIter(this._ctxt.IP);
+            await this.awaiter(1);
+        }
     }
 
-    private resolveIter(ip: number){
+    private awaiter(n:number): Promise<void>{
+        return new Promise<void>((res) => {
+            setTimeout(res,n);
+        });
+    }
+
+    private async resolveIter(ip: number){
         const el = this._quads[ip];
-        this.resolveIt(el);
+        await this.resolveIt(el);
     }
 
     private isMemInsideKnstn(dir: string) {
@@ -57,7 +73,7 @@ export class KapussinoVirtualMachine{
             && this._constantUperLimit > numIdx);
     }
 
-    private resolveIt(row: Tuple<string, string, string, string>){
+    private async resolveIt(row: Tuple<string, string, string, string>){
         let origin: string;
         let destiny: string;
         let data: any;
@@ -78,7 +94,7 @@ export class KapussinoVirtualMachine{
                 
                 data = this.getMemoryContent(origin);
                 this.debug(`>>> ${destiny} = ${data}: ${origin}`);
-                this._ctxt.Mem.set(destiny, data);                
+                this.setValueOnMemory(destiny, data);                
                 break;
             case "+":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -99,8 +115,7 @@ export class KapussinoVirtualMachine{
 
                 this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} + ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
 
-                this._ctxt.Mem.set(destiny, data);
-                this.debug(`>>> ${data}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "-":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -118,7 +133,8 @@ export class KapussinoVirtualMachine{
                     data = ond1 + ond2;
                 }
 
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}:${this.resolvePointer(row.v2!)}:${row.v2!} - ${ond2}:${this.resolvePointer(row.v3!)}:${row.v3!} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "*":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -135,8 +151,8 @@ export class KapussinoVirtualMachine{
                 else{
                     data = ond1 + ond2;
                 }
-
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} * ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "/":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -153,8 +169,8 @@ export class KapussinoVirtualMachine{
                 else{
                     data = ond1 + ond2;
                 }
-
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} / ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case ">":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -178,8 +194,8 @@ export class KapussinoVirtualMachine{
                 else{
                     data = "false";
                 }
-
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} > ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "<":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -203,8 +219,8 @@ export class KapussinoVirtualMachine{
                 else{
                     data = "false";
                 }
-
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} < ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case ">=":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -228,8 +244,8 @@ export class KapussinoVirtualMachine{
                 else{
                     data = "false";
                 }
-
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} >= ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "<=":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -257,7 +273,7 @@ export class KapussinoVirtualMachine{
                 this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} <= ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
                 
 
-                this._ctxt.Mem.set(destiny, data);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "==":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -281,8 +297,8 @@ export class KapussinoVirtualMachine{
                 else{
                     data = "false";
                 }
-
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} == ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "!=":
                 ond1 = this.getMemoryContent(this.resolvePointer(row.v2!));
@@ -307,13 +323,17 @@ export class KapussinoVirtualMachine{
                     data = "false";
                 }
 
-                this._ctxt.Mem.set(destiny, data);
+                this.debug(`>>> ${ond1}: ${this.resolvePointer(row.v2!)} != ${ond2}: ${this.resolvePointer(row.v3!)} = ${data}:${destiny}`);
+                this.setValueOnMemory(destiny, data);
                 break;
             case "WRITE":
                 let dat = this.getMemoryContent(this.resolvePointer(row.v4!));
                 console.log("===PROGRAM SAYS", dat);
                 break;
-
+            case "READ":
+                let toWrite = this.resolvePointer(row.v4!);
+                this.setValueOnMemory(toWrite, await this.readLine());
+                break;
             case "JUMP":
                 next = this.getInt(row.v4!);
                 this.debug(">>> DETECTADO JUMP. SALTANDO A " + next);
@@ -336,30 +356,34 @@ export class KapussinoVirtualMachine{
             case "ERA":
                 this._funcPile.push(this._funcTable.get(row.v4!)!.id);                
                 this._contextPile.push(new Context(this._funcTable.get(row.v4!)!.ip));
-
+                this._contextPile.peek()!.FunctionName = row.v4!;
+                this.debug(`>>> Creando contexto para ${row.v4!}`);
                 break;
             case "PARAM":
                 let func = this._funcTable.get(this._funcPile.peek()!)!;
                 this._contextPile.peek()!.Mem.set(func.args[parseInt(row.v4!)].dir!, this.getMemoryContent(this.resolvePointer(row.v2!)));
+                this.debug(`>>> Parametro ${row.v4}: ${row.v2}`);
                 break;
             case "GOSUB":
 
                 this._contextPile.peek()!.SonCtxt = this._ctxt;
                 this._ctxt = this._contextPile.pop()!;
+                this.debug(`>>> Cambiando contexto a ${this._funcPile.peek()}. Saltando a ${this._ctxt.IP}`);
                 break;
             case "ENDFUNCTION":
-
                 let pile = this._funcPile.pop();
+                
                 if(pile){
                     let func = this._funcTable.get(pile);
                     
                     let dir = func!.value!;
-                    this._ctxt.SonCtxt!.Mem.set(dir, this._ctxt.Mem.get(dir));
+                    this.setValueOnMemory(dir, this.getMemoryContent(dir));
                 }
 
                 if(this._ctxt.SonCtxt){
                     this._ctxt = this._ctxt.SonCtxt!;
                 }
+                this.debug(this._ctxt.FunctionName)
                 break;
             default:
                 break;
@@ -432,15 +456,41 @@ export class KapussinoVirtualMachine{
         return res != undefined;
     }
 
+    private setValueOnMemory(dir: string, val: any){
+        let ctxt : Context | undefined;
+        ctxt = this._ctxt;
+        if(this._functionKontext > parseInt(dir)){
+            
+            while(ctxt.SonCtxt != undefined){
+                ctxt = ctxt!.SonCtxt;
+            }
+        }
+        if(!ctxt) throw "No Context";
+        
+        ctxt.Mem.set(dir, val);
+        //this.debug(`>>> Saved ${this.getMemoryContent(dir)} (${dir}) on context ${ctxt.FunctionName}`);
+
+    }
+
     private getMemoryContent(dir: string) {
         let data: any;
+        let ctxt: Context | undefined;
+        let ctxtName: string = "";
         
         if(this.isMemInsideKnstn(dir)){
             data = this._constantMemory.getFromDir(dir);
         }
         else{
-            data = this._ctxt.Mem.get(dir);
+            ctxt = this._ctxt;
+            do{
+                if(!ctxt) throw "";
+                data = ctxt.Mem.get(dir);
+                ctxtName = ctxt.FunctionName;
+                ctxt = ctxt.SonCtxt;
+            }
+            while(data == undefined && ctxt != undefined);
         }
+        //this.debug(`>>> GOT ${data} (${dir}) on context ${ctxtName}`);
         return data;
     }
 
@@ -448,5 +498,13 @@ export class KapussinoVirtualMachine{
         if(this._isDebug)
             console.log(...args);
         
+    }
+
+    private readLine(): Promise<string>{
+        return new Promise((res) => {
+            rl.question("", (answ) => {
+                res(answ);
+            })
+        });
     }
 }

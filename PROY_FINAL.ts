@@ -283,6 +283,19 @@ export namespace PROY_FINAL{
 			this.pileOps.pop();
 			this.pileVals.pop();
 		}
+		pushFuncState = () => {
+			this.pileOps.push(";F;");
+			this.pileVals.push(";F;");
+		}
+		popFuncState = () => {
+			let ops = this.pileOps.peek() != ";F;";
+			let vals = this.pileVals.peek() != ";F;";
+			if(ops || vals){
+				throw new Error("FUNCTION ARG ENDED UNEXPECTEDLY")
+			}
+			this.pileOps.pop();
+			this.pileVals.pop();
+		}
 		pushParthState = () => {
 			this.pileOps.push(";P;");
 			this.pileVals.push(";P;");
@@ -385,6 +398,8 @@ export namespace PROY_FINAL{
 				this.varTable = fatherVarTable;
 			else
 				throw "INNER: NO FATHER VAR TABLE";
+
+				this.squats.push(new Tuple("ENDFUNCTION", "","",""));
 		}
 /* 		getLastValue = () => {
 			return this.pileVals.pop();
@@ -1196,7 +1211,7 @@ export namespace PROY_FINAL{
 				[`[0-9]+`,                   "return 'integer';"],
 				[`(\\*|\\/)`,                   "return 'op_t1';"],
 				[`(\\&&|\\|\\|)`,                   "return 'op_t4';"],
-				[`(\\!\\=|\\=\\=|\\<|\\>|\\>\\=|\\<\\=)`,                   "return 'op_t3';"],
+				[`(\\!\\=|\\=\\=|\\>\\=|\\<\\=|\\<|\\>)`,                   "return 'op_t3';"],
 				[`\\=`,                   "return 'eq';"],
 				[`[a-zA-Z_$]\\w*`,                   "return 'id';"],
 				[`\\s+`,                   ""],
@@ -1228,7 +1243,9 @@ export namespace PROY_FINAL{
 			"PDL2"				: [["separ R_PDL1_type PDL2", "$$ = [$2].concat($3)"], ["", "$$ = [];"]],
 			"ST"				: ["STDEF ST", ""],
 			/**/"STDEF"				: [["ASI e_stmt", "yy.pileType.pop();"], ["CALL e_stmt", ""], ["RET e_stmt", ""], ["REE e_stmt", ""], ["WRT e_stmt", ""], ["DEC", ""], ["REP", ""]],
-			"CALL"				: [["R_CALL_ID s_par CALA e_par", "$$ = yy.callFunction_end();"]],
+			"CALL"				: [["R_CALL_ID R_CALL_S_PAR CALA R_CALL_E_PAR", "$$ = yy.callFunction_end();"]],
+			"R_CALL_S_PAR"		: [["s_par", "yy.pushFuncState();"]],
+			"R_CALL_E_PAR"		: [["e_par", "yy.popFuncState();"]],
 			/**/"R_CALL_ID"		: [["id", "yy.callFunction_start($1);"]],
 			"CALA"				: [["R_CALA_XP0 CALA2", "yy.pileType.pop(); console.log('Types:');yy.pileType.print();"], ["", ""]],
 			"CALA2"				: [["separ R_CALA_XP0 CALA2", "yy.pileType.pop();"], ["", ""]],
@@ -1485,22 +1502,25 @@ export namespace PROY_FINAL{
 				float: valor;
 
 			funcion float fact (float j);
-			var int: i;
+			var int: i; float: v;
 			{
 				i = j + (p-j*2+j);
-				si (j == 1) entonces
+				si (j <= 1) entonces
 				{
 					regresa(j);
 				}
 				sino
 				{
-					regresa (j * fact(j-1));
+					regresa(j * fact(j-1));
+
+
 				}
 			}
 
 			funcion void inicia (float y);
 			var int: x;
 			{
+				valor = 1;
 				x = 0;
 				mientras(x < 11) haz
 				{
@@ -1511,14 +1531,8 @@ export namespace PROY_FINAL{
 
 			principal ()
 			{
-				lee(p);
-				j = p*2;
-				inicia(p*j-5);
-				desde i=0 hasta 9 hacer
-				{
-					Arreglo[i] = Arreglo[i] * fact(Arreglo[i] - p);
-				}
-
+				lee(valor);
+				escribe(fact(valor));				
 			}
 	`.replace("\t", "")));
 
