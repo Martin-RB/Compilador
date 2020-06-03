@@ -290,9 +290,10 @@ var PROY_FINAL;
                 console.log("FIRST");
                 _this.pileFunc.push(id);
                 _this.actualFunction = id;
+                var mem = _this.actualMemory.requestMemory(Memory.LOCAL_MEM, _this.getMemoryType(type), 1);
                 var r = { id: id, args: [], type: type,
                     ip: undefined, numLocalVars: undefined,
-                    numTempVars: undefined, value: undefined, k: 0 };
+                    numTempVars: undefined, value: mem, k: 0 };
                 _this.funcTable.set(id, r);
                 console.log("DaFunc", _this.funcTable.get(id));
                 if (type != "void") {
@@ -325,7 +326,6 @@ var PROY_FINAL;
                     throw "NO FUNCTION";
                 var actualFunc = _this.funcTable.get(_this.actualFunction);
                 actualFunc.numTempVars = used;
-                _this.squats.push(new Tuple_1.Tuple("ENDFUNCTION", "", "", ""));
                 var fatherMem = _this.actualMemory.getFather();
                 if (fatherMem != null)
                     _this.actualMemory = fatherMem;
@@ -426,20 +426,6 @@ var PROY_FINAL;
                 }
                 return dir;
             };
-            this.functionReturn = function (val) {
-                var type = _this.pileType.pop();
-                if (type == undefined)
-                    throw "Error: Tipo de regreso no detectado";
-                if (val == undefined)
-                    throw "Error: Valor de regreso no detectado";
-                var id = _this.pileFunc.peek();
-                if (id == undefined || !_this.funcTable.exist(id))
-                    throw "Error: Función dueña de regreso no detectada";
-                var func = _this.funcTable.get(id);
-                if (func.type != type)
-                    throw "Error: Tipo de retorno no compatible";
-                func.value = val;
-            };
             this.getFuncSavedMemory = function (id) {
                 console.log("THE MEMORY: ", id);
                 if (!_this.funcTable.exist(id)) {
@@ -470,6 +456,7 @@ var PROY_FINAL;
                 _this.pushVal(v2);
                 _this.pushOp("<=");
                 _this.checkOperation("3");
+                _this.pileType.pop();
             };
             this.fromToSum = function () {
                 var varDir = _this.pileFromTo.pop();
@@ -487,6 +474,7 @@ var PROY_FINAL;
                 _this.pushOp("+");
                 _this.checkOperation("2");
                 _this.checkOperation("0");
+                _this.pileType.pop();
             };
             this.fromToEndProc = function () {
             };
@@ -530,6 +518,7 @@ var PROY_FINAL;
                     throw "Numero incorrecto de parametros. Se pusieron " + func.k + ", se esperaban " + func.args.length + ".";
                 }
                 _this.squats.push(new Tuple_1.Tuple("GOSUB", "", "", _this.pileFunc.pop()));
+                _this.pileType.push(func.type);
                 return id;
             };
             this.setWriteProc = function (ids) {
@@ -543,7 +532,6 @@ var PROY_FINAL;
                 });
             };
             this.functionReturnProc = function (value, type) {
-                var _a;
                 var id = _this.pileFunc.peek();
                 if (!id)
                     throw "No hay función a la cual asignar 'regresa'";
@@ -552,9 +540,8 @@ var PROY_FINAL;
                     throw "No hay funci\u00F3n declarada llamada '" + id + "'";
                 if (func.type != type)
                     throw "Se ha regresado un tipo '" + type + "' en la funci\u00F3n '" + id + "' de tipo '" + func.type + "'.";
-                console.log("FUNCTIONASS: ", value);
-                func.value = value;
-                console.log((_a = _this.funcTable.get(id)) === null || _a === void 0 ? void 0 : _a.value);
+                _this.squats.push(new Tuple_1.Tuple("=", value, "", func.value));
+                _this.squats.push(new Tuple_1.Tuple("ENDFUNCTION", "", "", ""));
             };
             this.addJumpT = function (eValue, destiny) {
                 var _dest = "_";
@@ -663,6 +650,7 @@ var PROY_FINAL;
                             "<=": "bool",
                             ">=": "bool",
                             "==": "bool",
+                            "!=": "bool",
                             "&&": "NOP",
                             "||": "NOP",
                             "=": "int"
@@ -677,6 +665,7 @@ var PROY_FINAL;
                             "<=": "bool",
                             ">=": "bool",
                             "==": "bool",
+                            "!=": "bool",
                             "&&": "NOP",
                             "||": "NOP",
                             "=": "int"
@@ -735,6 +724,7 @@ var PROY_FINAL;
                             "<=": "bool",
                             ">=": "bool",
                             "==": "bool",
+                            "!=": "bool",
                             "&&": "NOP",
                             "||": "NOP",
                             "=": "float"
@@ -749,6 +739,7 @@ var PROY_FINAL;
                             "<=": "bool",
                             ">=": "bool",
                             "==": "bool",
+                            "!=": "bool",
                             "&&": "NOP",
                             "||": "NOP",
                             "=": "float"
@@ -832,6 +823,7 @@ var PROY_FINAL;
                             "<=": "NOP",
                             ">=": "NOP",
                             "==": "bool",
+                            "!=": "bool",
                             "&&": "NOP",
                             "||": "NOP",
                         },
@@ -912,6 +904,7 @@ var PROY_FINAL;
                             "<=": "NOP",
                             ">=": "NOP",
                             "==": "bool",
+                            "!=": "bool",
                             "&&": "bool",
                             "||": "bool",
                         },
@@ -1140,14 +1133,15 @@ var PROY_FINAL;
             "ASI_DIMID_R": [["DIMID", 'yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n));']],
             "ASI_EQ_R": [["eq", 'yy.pushOp($1)']],
             /**/ "ASI_": [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
-            "RET": [["ret s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`))"]],
+            "RET": [["RET_ s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`));console.log('2222');yy.pileType.print();"]],
+            "RET_": [["ret", "console.log('1111');yy.pileType.print();"]],
             "REE": [["read s_par REE_ e_par", "yy.setReadProc($3);"]],
             /**/ "REE_": [["DIMID REE__", "$$ = [yy.getVarSavedMemory($1.n, $1.d)].concat($2);"]],
             "REE__": [["separ DIMID REE__", "$$ = [yy.getVarSavedMemory($2.n, $2.d)].concat($3);"], ["", "$$ = [];"]],
             "WRT": [["write s_par WL e_par", "yy.setWriteProc($3);"]],
             "WL": [["W_C WL1", "$$ = $1.concat($2);"]],
             "WL1": [["separ W_C WL1", "$$ = $2.concat($3);"], ["", "$$ = [];"]],
-            "W_C": [["XP0", "$$ = [$1];"]],
+            "W_C": [["XP0", "$$ = [$1]; yy.pileType.pop()"]],
             "DEC": [["if s_par DEC_XP0_R e_par then B ELSE", 'yy.resolveJump()']],
             /**/ "DEC_XP0_R": [["XP0", "yy.decisionCheck(); yy.addJumpF($1);"]],
             /*--*/ "DEC_B_R": [["B", '']],
@@ -1160,7 +1154,7 @@ var PROY_FINAL;
             /**/ "COND_XP0_R": [["XP0", "console.log('v', $1);yy.addJumpF($1); yy.pileVals.pop(); yy.pileType.pop()"]],
             /**/ "COND_B_R": [["B", "yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true);"]],
             "NCOND": [["from NCOND_P1_R dof B", "yy.fromToSum(); yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true)"]],
-            /**/ "NCOND_P1_R": [["ASI to XP0", "yy.pileFromTo.push($1); yy.pileFromToType.push(yy.pileType.peek()); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop())"]],
+            /**/ "NCOND_P1_R": [["ASI to XP0", "yy.pileFromTo.push($1); yy.pileFromToType.push(yy.pileType.peek()); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop()); console.log('FORMTO:');yy.pileType.print();"]],
             "DIMID": [["id DIMID_", '$$ = {n:$1, d:$2};']],
             /**/ "DIMID_": [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; ;'], ["", '']],
             "DIMID_S_CORCH_R": [["s_corch", 'yy.pushCorchState();']],
@@ -1331,7 +1325,51 @@ var PROY_FINAL;
                     q[1]= 123;
                 }
         `.replace("\t", ""))); */
-    console.log(p.parse("\n\t\t\tprograma XD; \n\t\t\tvar int: x, y,z;\n\n\t\t\tfuncion float holas();\n\t\t\tvar float: v[2], r[2];\n\t\t\t{\n\t\t\t\tv[0] = 0;\n\t\t\t\tv[1] = 1;\n\t\t\t\tr[1] = 1;\n\n\t\t\t\tdesde v[0] = 0 hasta 9 hacer\n\t\t\t\t{\n\t\t\t\t\t\n\t\t\t\t}\n\n\t\t\t\t\n\n\t\t\t\tsi(v[1] > 9) entonces{\n\t\t\t\t\t\n\t\t\t\t}\n\t\t\t\tsino{\n\t\t\t\t\t\n\t\t\t\t}\n\n\t\t\t\tregresa (r[1] + v[1] + r[1]);\n\t\t\t}\n\n\t\t\tfuncion float fibby(int h);\n\t\t\t{\n\t\t\t\tsi (h != 0) entonces\n\t\t\t\t{\n\t\t\t\t\tregresa (1);\n\t\t\t\t}\n\t\t\t\tregresa fibby(h - 1);\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tx = 1+1 + holas();\n\t\t\t\tz = fibby(2);\n\t\t\t\tescribe('z', z);\n\t\t\t\tescribe('x', x);\n\t\t\t\ty = 1 + x * z;\n\t\t\t\tescribe(y);\n\t\t\t}\n\t".replace("\t", "")));
+    /* 	console.log(p.parse(`
+                programa XD;
+                var int: x, y,z;
+    
+                funcion float holas();
+                var float: v[2], r[2];
+                {
+                    v[0] = 0;
+                    v[1] = 1;
+                    r[1] = 1;
+    
+                    mientras (r[1] < 10) haz{
+                        r[1] = r[1] + 1;
+                    }
+    
+                    
+    
+                    si(v[1] > 9) entonces{
+                        
+                    }
+                    sino{
+                        
+                    }
+    
+                    regresa (r[1]);
+                }
+    
+                funcion float fibby(float h);
+                var float: r;
+                {
+                    escribe(h - 1);
+                    si (h == 1) entonces
+                    {
+                        regresa (1.0);
+                    }
+                    r = fibby(h - 1) * h;
+                    regresa (r);
+                }
+                principal ()
+                {
+                    y = holas();
+                    escribe(y);
+                }
+        `.replace("\t", ""))); */
+    console.log(p.parse("\n\t\t\tprograma foreveralone; \n\t\t\tvar\n\t\t\t\tint: i,j, p;\n\t\t\t\tfloat: Arreglo[10], OtroArreglo[10];\n\t\t\t\tfloat: valor;\n\n\t\t\tfuncion float fact (float j);\n\t\t\tvar int: i;\n\t\t\t{\n\t\t\t\ti = j + (p-j*2+j);\n\t\t\t\tsi (j == 1) entonces\n\t\t\t\t{\n\t\t\t\t\tregresa(j);\n\t\t\t\t}\n\t\t\t\tsino\n\t\t\t\t{\n\t\t\t\t\tregresa (j * fact(j-1));\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tfuncion void inicia (float y);\n\t\t\tvar int: x;\n\t\t\t{\n\t\t\t\tx = 0;\n\t\t\t\tmientras(x < 11) haz\n\t\t\t\t{\n\t\t\t\t\tArreglo[x] = y * x;\n\t\t\t\t\tx = x + 1;\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tlee(p);\n\t\t\t\tj = p*2;\n\t\t\t\tinicia(p*j-5);\n\t\t\t\tdesde i=0 hasta 9 hacer\n\t\t\t\t{\n\t\t\t\t\tArreglo[i] = Arreglo[i] * fact(Arreglo[i] - p);\n\t\t\t\t}\n\n\t\t\t}\n\t".replace("\t", "")));
     console.log(p.yy.printQuads());
     p.yy.varTable.print();
     p.yy.pileType.print();

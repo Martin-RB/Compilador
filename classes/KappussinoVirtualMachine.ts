@@ -3,7 +3,6 @@ import { FuncTable, IFuncTableRow } from "./FuncTable";
 import { HashMap } from "../DataStruc/HashMap";
 import { MortalKonstants } from "./MortalKonstants";
 import { Stack } from "../DataStruc/Stack";
-import { Hash } from "crypto";
 
 export class Context{
     public Mem: HashMap<any>;
@@ -26,7 +25,7 @@ export class KapussinoVirtualMachine{
     private _constantUperLimit: number;
     private _ctxt: Context;
     private _contextPile: Stack<Context>;
-    private _isDebug: boolean = false;
+    private _isDebug: boolean = true;
 
     constructor(quads: Array<Tuple<string, string, string, string>>, funcTable: FuncTable, constantMemory: MortalKonstants){
         this._quads = quads;
@@ -42,7 +41,7 @@ export class KapussinoVirtualMachine{
     resolve(){
         if(this._ctxt.IP < this._quads.length)
             setTimeout(() => {
-            ; this.resolveIter(this._ctxt.IP); this.resolve();}, 10);
+            ; this.resolveIter(this._ctxt.IP); this.resolve();}, 1);
     }
 
     private resolveIter(ip: number){
@@ -341,7 +340,7 @@ export class KapussinoVirtualMachine{
                 break;
             case "PARAM":
                 let func = this._funcTable.get(this._funcPile.peek()!)!;
-                this._contextPile.peek()!.Mem.set(func.args[parseInt(row.v4!)].dir!, this.getMemoryContent(this.resolvePointer(row.v2!));
+                this._contextPile.peek()!.Mem.set(func.args[parseInt(row.v4!)].dir!, this.getMemoryContent(this.resolvePointer(row.v2!)));
                 break;
             case "GOSUB":
 

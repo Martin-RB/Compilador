@@ -15,7 +15,7 @@ exports.Context = Context;
 var KapussinoVirtualMachine = /** @class */ (function () {
     function KapussinoVirtualMachine(quads, funcTable, constantMemory) {
         this._constantUnderLimit = 0;
-        this._isDebug = false;
+        this._isDebug = true;
         this._quads = quads;
         this._funcTable = funcTable;
         this._constantMemory = constantMemory;
@@ -31,7 +31,7 @@ var KapussinoVirtualMachine = /** @class */ (function () {
                 ;
                 _this.resolveIter(_this._ctxt.IP);
                 _this.resolve();
-            }, 10);
+            }, 1);
     };
     KapussinoVirtualMachine.prototype.resolveIter = function (ip) {
         var el = this._quads[ip];

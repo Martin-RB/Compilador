@@ -325,9 +325,10 @@ export namespace PROY_FINAL{
 			
 			this.pileFunc.push(id);
 			this.actualFunction = id;
+			let mem = this.actualMemory.requestMemory(Memory.LOCAL_MEM, this.getMemoryType(type), 1);
 			let r: IFuncTableRow = {id, args: [], type, 
 				ip:undefined, numLocalVars: undefined, 
-				numTempVars: undefined,value: undefined, k: 0};
+				numTempVars: undefined,value: mem, k: 0};
 			this.funcTable.set(id, r);
 
 			console.log("DaFunc", this.funcTable.get(id));
@@ -368,8 +369,6 @@ export namespace PROY_FINAL{
 			if(!this.actualFunction) throw "NO FUNCTION";
 			let actualFunc = this.funcTable.get(this.actualFunction)!;
 			actualFunc.numTempVars = used;
-
-			this.squats.push(new Tuple("ENDFUNCTION", "","",""));
 
 			let fatherMem = this.actualMemory.getFather();
 			if(fatherMem != null)
@@ -484,23 +483,6 @@ export namespace PROY_FINAL{
 			return dir;
 		}
 
-		functionReturn = (val: string) => {
-			let type = this.pileType.pop();
-
-			if(type == undefined) throw "Error: Tipo de regreso no detectado";
-			if(val == undefined) throw "Error: Valor de regreso no detectado";
-
-			let id = this.pileFunc.peek();
-			if(id == undefined || !this.funcTable.exist(id)) throw "Error: Función dueña de regreso no detectada";
-			
-			let func = this.funcTable.get(id)!;
-			
-			if(func.type != type) throw "Error: Tipo de retorno no compatible";
-			
-			func.value = val;
-			
-		}
-
 		getFuncSavedMemory = (id: string) => {
 			
 			console.log("THE MEMORY: ", id);
@@ -575,11 +557,12 @@ export namespace PROY_FINAL{
 			}
 			
 		}
-		fromToComp = (v1:string, v2:string) => {
+		fromToComp = (v1:string, v2:string) => {			
 			this.pushVal(v1);
 			this.pushVal(v2);
 			this.pushOp("<=");
 			this.checkOperation("3");
+			this.pileType.pop();
 		}
 		fromToSum = () => {
 			let varDir = this.pileFromTo.pop();
@@ -596,6 +579,8 @@ export namespace PROY_FINAL{
 			this.pushOp("+");
 			this.checkOperation("2");
 			this.checkOperation("0");
+
+			this.pileType.pop();
 		}
 		fromToEndProc = () => {
 
@@ -654,7 +639,7 @@ export namespace PROY_FINAL{
 			
 
 			this.squats.push(new Tuple("GOSUB","","",this.pileFunc.pop()));
-
+			this.pileType.push(func.type);
 			return id;
 		}
 
@@ -682,9 +667,9 @@ export namespace PROY_FINAL{
 			if(func.type != type) 
 				throw `Se ha regresado un tipo '${type}' en la función '${id}' de tipo '${func.type}'.`;
 						
-				console.log("FUNCTIONASS: ", value);
-			func.value = value;
-			console.log(this.funcTable.get(id)?.value);
+
+			this.squats.push(new Tuple("=", value, "", func.value));
+			this.squats.push(new Tuple("ENDFUNCTION", "","",""));
 			
 		}
 
@@ -776,6 +761,7 @@ export namespace PROY_FINAL{
 			let func = this.funcTable.get(name);
 			if(!func){ throw `Función ${name} no existente`}
 
+
 			return func.type;
 		}
 		pushType = (type: string) => {
@@ -813,6 +799,7 @@ export namespace PROY_FINAL{
 						"<=": "bool",
 						">=": "bool",
 						"==": "bool",
+						"!=": "bool",
 						"&&": "NOP",
 						"||": "NOP",
 						"=": "int"
@@ -827,6 +814,7 @@ export namespace PROY_FINAL{
 						"<=":"bool",
 						">=":"bool",
 						"==":"bool",
+						"!=": "bool",
 						"&&":"NOP",
 						"||":"NOP",
 						"=": "int"
@@ -885,6 +873,7 @@ export namespace PROY_FINAL{
 						"<=":"bool",
 						">=":"bool",
 						"==":"bool",
+						"!=": "bool",
 						"&&":"NOP",
 						"||":"NOP",
 						"=": "float"
@@ -899,6 +888,7 @@ export namespace PROY_FINAL{
 						"<=":"bool",
 						">=":"bool",
 						"==":"bool",
+						"!=": "bool",
 						"&&":"NOP",
 						"||":"NOP",
 						"=": "float"
@@ -982,6 +972,7 @@ export namespace PROY_FINAL{
 						"<=":"NOP",
 						">=":"NOP",
 						"==":"bool",
+						"!=": "bool",
 						"&&":"NOP",
 						"||":"NOP",
 					},
@@ -1062,6 +1053,7 @@ export namespace PROY_FINAL{
 						"<=":"NOP",
 						">=":"NOP",
 						"==":"bool",
+						"!=": "bool",
 						"&&":"bool",
 						"||":"bool",
 					},
@@ -1245,14 +1237,15 @@ export namespace PROY_FINAL{
 			"ASI_DIMID_R"		: [["DIMID", 'yy.pushVal(yy.getVarSavedMemory($1.n, $1.d)); yy.pushType(yy.getVariableType($1.n));']],
 			"ASI_EQ_R"			: [["eq", 'yy.pushOp($1)']],
 			/**/"ASI_"				: [["ASI_DIMID_R ASI_EQ_R", ''], ["", '']],
-			"RET"				: [["ret s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`))"]],
+			"RET"				: [["RET_ s_par XP0 e_par", "yy.functionReturnProc($3, yy.pileType.pop()); console.log(`AAAAAAj`, yy.funcTable.get(`holas`));console.log('2222');yy.pileType.print();"]],
+			"RET_"				: [["ret", "console.log('1111');yy.pileType.print();"]],
 			"REE"				: [["read s_par REE_ e_par", "yy.setReadProc($3);"]],
 			/**/"REE_"			: [["DIMID REE__", "$$ = [yy.getVarSavedMemory($1.n, $1.d)].concat($2);"]],
 			"REE__"				: [["separ DIMID REE__", "$$ = [yy.getVarSavedMemory($2.n, $2.d)].concat($3);"], ["", "$$ = [];"]],
 			"WRT"				: [["write s_par WL e_par", "yy.setWriteProc($3);"]],
 			"WL"				: [["W_C WL1", "$$ = $1.concat($2);"]],
 			"WL1"				: [["separ W_C WL1", "$$ = $2.concat($3);"], ["", "$$ = [];"]],
-			"W_C"				: [["XP0", "$$ = [$1];"]],
+			"W_C"				: [["XP0", "$$ = [$1]; yy.pileType.pop()"]],
 			"DEC"				: [["if s_par DEC_XP0_R e_par then B ELSE", 'yy.resolveJump()']],
 			/**/"DEC_XP0_R"			: [["XP0", "yy.decisionCheck(); yy.addJumpF($1);"]],
 			/*--*/"DEC_B_R"			: [["B", '']],
@@ -1265,7 +1258,7 @@ export namespace PROY_FINAL{
 			/**/"COND_XP0_R"		: [["XP0", "console.log('v', $1);yy.addJumpF($1); yy.pileVals.pop(); yy.pileType.pop()"]],
 			/**/"COND_B_R"			: [["B", "yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true);"]],
 			"NCOND"				: [["from NCOND_P1_R dof B", "yy.fromToSum(); yy.resolveJump(undefined, yy.squats.length + 1); yy.addJump(true)"]],
-			/**/"NCOND_P1_R"		: [["ASI to XP0", "yy.pileFromTo.push($1); yy.pileFromToType.push(yy.pileType.peek()); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop())"]],
+			/**/"NCOND_P1_R"		: [["ASI to XP0", "yy.pileFromTo.push($1); yy.pileFromToType.push(yy.pileType.peek()); yy.addJumpSavepoint(); yy.fromToComp($1, $3); yy.addJumpF(yy.pileVals.pop()); console.log('FORMTO:');yy.pileType.print();"]],
 			"DIMID"				: [["id DIMID_", '$$ = {n:$1, d:$2};']],
 			/**/"DIMID_"			: [["DIMID_S_CORCH_R XP0 DIMID_E_CORCH_R", '$$ = $2; ;'], ["", '']],
 			"DIMID_S_CORCH_R"	: [["s_corch", 'yy.pushCorchState();']],
@@ -1440,7 +1433,7 @@ export namespace PROY_FINAL{
 			}
 	`.replace("\t", ""))); */
 
-	console.log(p.parse(`
+/* 	console.log(p.parse(`
 			programa XD; 
 			var int: x, y,z;
 
@@ -1451,9 +1444,8 @@ export namespace PROY_FINAL{
 				v[1] = 1;
 				r[1] = 1;
 
-				desde v[0] = 0 hasta 9 hacer
-				{
-					
+				mientras (r[1] < 10) haz{
+					r[1] = r[1] + 1;
 				}
 
 				
@@ -1465,26 +1457,68 @@ export namespace PROY_FINAL{
 					
 				}
 
-				regresa (r[1] + v[1] + r[1]);
+				regresa (r[1]);
 			}
 
-			funcion float fibby(int h);
+			funcion float fibby(float h);
+			var float: r;
 			{
-				si (h != 0) entonces
+				escribe(h - 1);
+				si (h == 1) entonces
 				{
-					regresa (1);
+					regresa (1.0);
 				}
-				regresa fibby(h - 1);
+				r = fibby(h - 1) * h;
+				regresa (r);
+			}
+			principal ()
+			{
+				y = holas();
+				escribe(y);
+			}
+	`.replace("\t", ""))); */
+	console.log(p.parse(`
+			programa foreveralone; 
+			var
+				int: i,j, p;
+				float: Arreglo[10], OtroArreglo[10];
+				float: valor;
+
+			funcion float fact (float j);
+			var int: i;
+			{
+				i = j + (p-j*2+j);
+				si (j == 1) entonces
+				{
+					regresa(j);
+				}
+				sino
+				{
+					regresa (j * fact(j-1));
+				}
+			}
+
+			funcion void inicia (float y);
+			var int: x;
+			{
+				x = 0;
+				mientras(x < 11) haz
+				{
+					Arreglo[x] = y * x;
+					x = x + 1;
+				}
 			}
 
 			principal ()
 			{
-				x = 1+1 + holas();
-				z = fibby(2);
-				escribe('z', z);
-				escribe('x', x);
-				y = 1 + x * z;
-				escribe(y);
+				lee(p);
+				j = p*2;
+				inicia(p*j-5);
+				desde i=0 hasta 9 hacer
+				{
+					Arreglo[i] = Arreglo[i] * fact(Arreglo[i] - p);
+				}
+
 			}
 	`.replace("\t", "")));
 
