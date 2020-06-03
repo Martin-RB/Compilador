@@ -1429,32 +1429,32 @@ export namespace PROY_FINAL{
 	`.replace("\t", ""))); */
 
 	let program = `
-			programa foreveralone; 
-			var
-				int: i,j, p;
-				float: Arreglo[10], OtroArreglo[10];
-				float: valor;
+programa foreveralone; 
+var
+	int: i,j, p;
+	float: Arreglo[10], OtroArreglo[10];
+	float: valor;
 
-			funcion float fibby (float j);
-			var int: i; float: v;
-			{
-				i = j + (p-j*2+j);
-				si (j <= 1) entonces
-				{
-					regresa(j);
-				}
-				sino
-				{
-					regresa(j * fibby(j-1));
-				}
-			}
+funcion float fibby (float j);
+var int: i; float: v;
+{
+	i = j + (p-j*2+j);
+	si (j <= 1) entonces
+	{
+		regresa(j);
+	}
+	sino
+	{
+		regresa(j * fibby(j-1));
+	}
+}
 
-			principal ()
-			{
-				lee(valor);
-				escribe(fibby(valor));
-				escribe(1*(6+4/2)/4);
-			}
+principal ()
+{
+	lee(valor);
+	escribe(fibby(valor));
+	escribe(1*(6+4/2)/4);
+}
 	`;
 
 /* 	var lexer = p.lexer, token;
@@ -1467,15 +1467,20 @@ export namespace PROY_FINAL{
 		console.log('<' + token + ', ' + lexer.yytext + '>')
 	} */
 	
-	console.log(p.parse(program.replace("\t", "")));
+	console.log(program);
+	
 
-	console.log(p.yy.printQuads());
+	console.log(p.parse(program.replace("\t", "")));
+	console.log("COMPILACIÓN");
+	
+
+	p.yy.printQuads();
 	
 
 	//p.yy.varTable.print();
 	//p.yy.pileVals.print();
 
-console.log("INICIA PROGRAMA");
+console.log("EJECUCIÓN");
 
 	let VM = new KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
 	VM.resolve();

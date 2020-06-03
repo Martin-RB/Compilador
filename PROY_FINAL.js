@@ -1331,7 +1331,7 @@ var PROY_FINAL;
                     escribe(y);
                 }
         `.replace("\t", ""))); */
-    var program = "\n\t\t\tprograma foreveralone; \n\t\t\tvar\n\t\t\t\tint: i,j, p;\n\t\t\t\tfloat: Arreglo[10], OtroArreglo[10];\n\t\t\t\tfloat: valor;\n\n\t\t\tfuncion float fibby (float j);\n\t\t\tvar int: i; float: v;\n\t\t\t{\n\t\t\t\ti = j + (p-j*2+j);\n\t\t\t\tsi (j <= 1) entonces\n\t\t\t\t{\n\t\t\t\t\tregresa(j);\n\t\t\t\t}\n\t\t\t\tsino\n\t\t\t\t{\n\t\t\t\t\tregresa(j * fibby(j-1));\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tprincipal ()\n\t\t\t{\n\t\t\t\tlee(valor);\n\t\t\t\tescribe(fibby(valor));\n\t\t\t\tescribe(1*(6+4/2)/4);\n\t\t\t}\n\t";
+    var program = "\nprograma foreveralone; \nvar\n\tint: i,j, p;\n\tfloat: Arreglo[10], OtroArreglo[10];\n\tfloat: valor;\n\nfuncion float fibby (float j);\nvar int: i; float: v;\n{\n\ti = j + (p-j*2+j);\n\tsi (j <= 1) entonces\n\t{\n\t\tregresa(j);\n\t}\n\tsino\n\t{\n\t\tregresa(j * fibby(j-1));\n\t}\n}\n\nprincipal ()\n{\n\tlee(valor);\n\tescribe(fibby(valor));\n\tescribe(1*(6+4/2)/4);\n}\n\t";
     /* 	var lexer = p.lexer, token;
         lexer.setInput(program);
         while (!lexer.done) {
@@ -1341,11 +1341,13 @@ var PROY_FINAL;
             }
             console.log('<' + token + ', ' + lexer.yytext + '>')
         } */
+    console.log(program);
     console.log(p.parse(program.replace("\t", "")));
-    console.log(p.yy.printQuads());
+    console.log("COMPILACIÓN");
+    p.yy.printQuads();
     //p.yy.varTable.print();
     //p.yy.pileVals.print();
-    console.log("INICIA PROGRAMA");
+    console.log("EJECUCIÓN");
     var VM = new KappussinoVirtualMachine_1.KapussinoVirtualMachine(p.yy.squats, p.yy.funcTable, p.yy.constantsMemory);
     VM.resolve();
 })(PROY_FINAL = exports.PROY_FINAL || (exports.PROY_FINAL = {}));
